@@ -1,5 +1,6 @@
 package com.viktor.booking.infrastructure.security;
 
+import com.viktor.booking.application.exception.InvalidTokenException;
 import com.viktor.booking.application.security.TokenService;
 import com.viktor.booking.domain.model.User;
 import io.jsonwebtoken.Claims;
@@ -74,8 +75,15 @@ public class JwtTokenService implements TokenService {
 
     @Override
     public String extractEmail(String token) {
-        return extractClaims(token)
-                .getSubject();
+        try {
+            return extractClaims(token)
+                    .getSubject();
+        } catch (
+                JwtException |
+                IllegalArgumentException exception
+        ) {
+            throw new InvalidTokenException(exception);
+        }
     }
 
     @Override
@@ -89,10 +97,7 @@ public class JwtTokenService implements TokenService {
 
             return user.getEmail()
                     .equals(tokenEmail);
-        } catch (
-                JwtException |
-                IllegalArgumentException exception
-        ) {
+        } catch (InvalidTokenException exception) {
             return false;
         }
     }
