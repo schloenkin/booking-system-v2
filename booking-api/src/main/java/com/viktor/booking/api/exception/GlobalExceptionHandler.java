@@ -21,6 +21,8 @@ import com.viktor.booking.application.exception.InvalidBookingDurationException;
 import com.viktor.booking.application.exception.UserNotFoundException;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.application.exception.InvalidBookingSearchException;
+import com.viktor.booking.application.exception.InvalidCredentialsException;
+import com.viktor.booking.application.exception.UserAlreadyExistsException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -145,11 +147,30 @@ public class GlobalExceptionHandler {
                 .badRequest()
                 .body(errorResponse);
     }
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentialsException(
+            InvalidCredentialsException exception,
+            HttpServletRequest request
+    ) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                HttpStatus.UNAUTHORIZED.toString(),
+
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(errorResponse);
+    }
+
     @ExceptionHandler({
             InactiveBookableServiceException.class,
             BookingTimeConflictException.class,
             BookingAlreadyCancelledException.class,
-            BookingCannotBeConfirmedException.class
+            BookingCannotBeConfirmedException.class,
+            UserAlreadyExistsException.class
     })
     public ResponseEntity<ErrorResponse> handleConflictException(
             RuntimeException exception,
