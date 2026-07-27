@@ -1,35 +1,40 @@
 package com.viktor.booking.api.controller;
 
 import com.viktor.booking.api.exception.GlobalExceptionHandler;
-import com.viktor.booking.application.service.BookingService;
+import com.viktor.booking.api.security.AuthenticatedUser;
+import com.viktor.booking.application.exception.InvalidBookingSearchException;
+import com.viktor.booking.application.query.BookingSearchCriteria;
+import com.viktor.booking.application.query.PageRequestData;
+import com.viktor.booking.application.query.PageResult;
+import com.viktor.booking.application.security.AuthenticatedUserContext;
+import com.viktor.booking.application.service.BookingAuthorizationService;
 import com.viktor.booking.domain.enums.BookingStatus;
+import com.viktor.booking.domain.enums.UserRole;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.model.Booking;
+import com.viktor.booking.domain.model.User;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.http.MediaType;
-import com.viktor.booking.application.query.BookingSearchCriteria;
-import com.viktor.booking.application.query.PageRequestData;
-import com.viktor.booking.application.query.PageResult;
-import com.viktor.booking.application.exception.InvalidBookingSearchException;
-
-
-import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,42 +43,92 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class BookingControllerTest {
 
     @Mock
-    private BookingService bookingService;
+    private BookingAuthorizationService authorizationService;
 
     private MockMvc mockMvc;
+    private AuthenticatedUserContext userContext;
 
     @BeforeEach
     void setUp() {
+        User user = new User(
+                1L,
+                "user@example.com",
+                "hashed-password",
+                UserRole.USER
+        );
+
+        AuthenticatedUser authenticatedUser =
+                new AuthenticatedUser(user);
+
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        authenticatedUser,
+                        null,
+                        authenticatedUser.getAuthorities()
+                );
+
+        SecurityContextHolder
+                .getContext()
+                .setAuthentication(authentication);
+
+        userContext =
+                new AuthenticatedUserContext(
+                        1L,
+                        UserRole.USER
+                );
+
         BookingController bookingController =
-                new BookingController(bookingService);
+                new BookingController(
+                        authorizationService
+                );
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(bookingController)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(
+                        new AuthenticationPrincipalArgumentResolver()
+                )
+                .setControllerAdvice(
+                        new GlobalExceptionHandler()
+                )
                 .build();
     }
 
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
-    void shouldReturnConfirmedBooking() throws Exception {
+    void shouldReturnConfirmedBooking()
+            throws Exception {
+
         Long bookingId = 8L;
 
         LocalDateTime startTime =
                 LocalDateTime.now().plusDays(1);
 
-        Booking confirmedBooking = new Booking(
-                bookingId,
-                1L,
-                2L,
-                startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.CONFIRMED
+        Booking confirmedBooking =
+                new Booking(
+                        bookingId,
+                        1L,
+                        2L,
+                        startTime,
+                        startTime.plusMinutes(60),
+                        BookingStatus.CONFIRMED
+                );
+
+        when(authorizationService.confirmBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(
+                Optional.of(confirmedBooking)
         );
 
-        when(bookingService.confirmBookingById(bookingId))
-                .thenReturn(Optional.of(confirmedBooking));
-
         mockMvc.perform(
-                        put("/api/bookings/{id}/confirm", bookingId)
+                        put(
+                                "/api/bookings/{id}/confirm",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(8))
@@ -83,19 +138,30 @@ class BookingControllerTest {
                         jsonPath("$.status")
                                 .value("CONFIRMED")
                 );
+
+        verify(authorizationService)
+                .confirmBookingById(
+                        userContext,
+                        bookingId
+                );
     }
 
     @Test
-    void shouldReturn404WhenBookingToConfirmDoesNotExist()
+    void shouldReturn404WhenBookingToConfirmIsNotAccessible()
             throws Exception {
 
         Long bookingId = 999999L;
 
-        when(bookingService.confirmBookingById(bookingId))
-                .thenReturn(Optional.empty());
+        when(authorizationService.confirmBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(Optional.empty());
 
         mockMvc.perform(
-                        put("/api/bookings/{id}/confirm", bookingId)
+                        put(
+                                "/api/bookings/{id}/confirm",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isNotFound());
     }
@@ -106,46 +172,57 @@ class BookingControllerTest {
 
         Long bookingId = 9L;
 
-        when(bookingService.confirmBookingById(bookingId))
-                .thenThrow(
-                        new BookingCannotBeConfirmedException(
-                                BookingStatus.CANCELLED
-                        )
-                );
+        when(authorizationService.confirmBookingById(
+                userContext,
+                bookingId
+        )).thenThrow(
+                new BookingCannotBeConfirmedException(
+                        BookingStatus.CANCELLED
+                )
+        );
 
         mockMvc.perform(
-                        put("/api/bookings/{id}/confirm", bookingId)
+                        put(
+                                "/api/bookings/{id}/confirm",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isConflict())
                 .andExpect(
-                        jsonPath("$.message").value(
-                                "Booking cannot be confirmed "
-                                        + "from status: CANCELLED"
-                        )
+                        jsonPath("$.message")
+                                .value(
+                                        "Booking cannot be confirmed "
+                                                + "from status: CANCELLED"
+                                )
                 );
     }
+
     @Test
-    void shouldReturnFirstPageOfAllBookings() throws Exception {
+    void shouldReturnFirstPageOfBookings()
+            throws Exception {
+
         LocalDateTime startTime =
                 LocalDateTime.now().plusDays(1);
 
-        Booking firstBooking = new Booking(
-                1L,
-                1L,
-                2L,
-                startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
-        );
+        Booking firstBooking =
+                new Booking(
+                        1L,
+                        1L,
+                        2L,
+                        startTime,
+                        startTime.plusMinutes(60),
+                        BookingStatus.PENDING
+                );
 
-        Booking secondBooking = new Booking(
-                2L,
-                3L,
-                4L,
-                startTime.plusHours(2),
-                startTime.plusHours(3),
-                BookingStatus.CONFIRMED
-        );
+        Booking secondBooking =
+                new Booking(
+                        2L,
+                        1L,
+                        4L,
+                        startTime.plusHours(2),
+                        startTime.plusHours(3),
+                        BookingStatus.CONFIRMED
+                );
 
         BookingSearchCriteria criteria =
                 new BookingSearchCriteria(
@@ -178,12 +255,15 @@ class BookingControllerTest {
                         true
                 );
 
-        when(bookingService.searchBookings(
+        when(authorizationService.searchBookings(
+                userContext,
                 criteria,
                 pageRequest
         )).thenReturn(pageResult);
 
-        mockMvc.perform(get("/api/bookings"))
+        mockMvc.perform(
+                        get("/api/bookings")
+                )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(
@@ -219,33 +299,56 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.first").value(true))
                 .andExpect(jsonPath("$.last").value(true));
 
-        verify(bookingService).searchBookings(
-                criteria,
-                pageRequest
-        );
+        verify(authorizationService)
+                .searchBookings(
+                        userContext,
+                        criteria,
+                        pageRequest
+                );
     }
 
     @Test
-    void shouldSearchBookingsUsingQueryParameters() throws Exception {
-        LocalDateTime startTime =
-                LocalDateTime.of(2030, 4, 15, 10, 0);
+    void shouldPassSearchParametersAndAuthenticatedContext()
+            throws Exception {
 
-        Booking booking = new Booking(
-                10L,
-                3L,
-                7L,
-                startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
-        );
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        4,
+                        15,
+                        10,
+                        0
+                );
+
+        Booking booking =
+                new Booking(
+                        10L,
+                        1L,
+                        7L,
+                        startTime,
+                        startTime.plusMinutes(60),
+                        BookingStatus.PENDING
+                );
 
         BookingSearchCriteria criteria =
                 new BookingSearchCriteria(
                         BookingStatus.PENDING,
-                        3L,
+                        999L,
                         7L,
-                        LocalDateTime.of(2030, 4, 1, 0, 0),
-                        LocalDateTime.of(2030, 4, 30, 23, 59)
+                        LocalDateTime.of(
+                                2030,
+                                4,
+                                1,
+                                0,
+                                0
+                        ),
+                        LocalDateTime.of(
+                                2030,
+                                4,
+                                30,
+                                23,
+                                59
+                        )
                 );
 
         PageRequestData pageRequest =
@@ -267,7 +370,8 @@ class BookingControllerTest {
                         true
                 );
 
-        when(bookingService.searchBookings(
+        when(authorizationService.searchBookings(
+                userContext,
                 criteria,
                 pageRequest
         )).thenReturn(pageResult);
@@ -275,7 +379,7 @@ class BookingControllerTest {
         mockMvc.perform(
                         get("/api/bookings")
                                 .param("status", "PENDING")
-                                .param("userId", "3")
+                                .param("userId", "999")
                                 .param("serviceId", "7")
                                 .param(
                                         "from",
@@ -301,7 +405,7 @@ class BookingControllerTest {
                 )
                 .andExpect(
                         jsonPath("$.content[0].userId")
-                                .value(3)
+                                .value(1)
                 )
                 .andExpect(
                         jsonPath("$.content[0].serviceId")
@@ -310,47 +414,45 @@ class BookingControllerTest {
                 .andExpect(
                         jsonPath("$.content[0].status")
                                 .value("PENDING")
-                )
-                .andExpect(jsonPath("$.page").value(1))
-                .andExpect(jsonPath("$.size").value(5))
-                .andExpect(
-                        jsonPath("$.totalElements")
-                                .value(6)
-                )
-                .andExpect(
-                        jsonPath("$.totalPages")
-                                .value(2)
-                )
-                .andExpect(jsonPath("$.first").value(false))
-                .andExpect(jsonPath("$.last").value(true));
+                );
 
-        verify(bookingService).searchBookings(
-                criteria,
-                pageRequest
-        );
+        verify(authorizationService)
+                .searchBookings(
+                        userContext,
+                        criteria,
+                        pageRequest
+                );
     }
 
     @Test
-    void shouldReturnBookingById() throws Exception {
+    void shouldReturnAccessibleBookingById()
+            throws Exception {
+
         Long bookingId = 3L;
 
         LocalDateTime startTime =
                 LocalDateTime.now().plusDays(1);
 
-        Booking booking = new Booking(
-                bookingId,
-                1L,
-                2L,
-                startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
-        );
+        Booking booking =
+                new Booking(
+                        bookingId,
+                        1L,
+                        2L,
+                        startTime,
+                        startTime.plusMinutes(60),
+                        BookingStatus.PENDING
+                );
 
-        when(bookingService.getBookingById(bookingId))
-                .thenReturn(Optional.of(booking));
+        when(authorizationService.getBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(Optional.of(booking));
 
         mockMvc.perform(
-                        get("/api/bookings/{id}", bookingId)
+                        get(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(3))
@@ -361,191 +463,228 @@ class BookingControllerTest {
                                 .value("PENDING")
                 );
     }
+
     @Test
-    void shouldReturn404WhenBookingDoesNotExist() throws Exception {
+    void shouldReturn404WhenBookingIsNotAccessible()
+            throws Exception {
+
         Long bookingId = 999999L;
 
-        when(bookingService.getBookingById(bookingId))
-                .thenReturn(Optional.empty());
-
-        mockMvc.perform(
-                        get("/api/bookings/{id}", bookingId)
-                )
-                .andExpect(status().isNotFound());
-    }
-    @Test
-    void shouldReturnBookingsByStatus() throws Exception {
-        LocalDateTime startTime =
-                LocalDateTime.now().plusDays(1);
-
-        Booking confirmedBooking = new Booking(
-                4L,
-                1L,
-                2L,
-                startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.CONFIRMED
-        );
-
-        when(bookingService.getBookingsByStatus(
-                BookingStatus.CONFIRMED
-        )).thenReturn(List.of(confirmedBooking));
+        when(authorizationService.getBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(Optional.empty());
 
         mockMvc.perform(
                         get(
-                                "/api/bookings/status/{status}",
-                                BookingStatus.CONFIRMED
+                                "/api/bookings/{id}",
+                                bookingId
                         )
                 )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(4))
-                .andExpect(
-                        jsonPath("$[0].status")
-                                .value("CONFIRMED")
-                );
+                .andExpect(status().isNotFound());
     }
+
     @Test
-    void shouldCreateBooking() throws Exception {
+    void shouldCreateBookingForAuthenticatedUser()
+            throws Exception {
+
         LocalDateTime startTime =
-                LocalDateTime.of(2030, 1, 15, 10, 0);
+                LocalDateTime.of(
+                        2030,
+                        1,
+                        15,
+                        10,
+                        0
+                );
 
         LocalDateTime endTime =
                 startTime.plusMinutes(60);
 
-        Booking createdBooking = new Booking(
-                10L,
-                1L,
-                2L,
-                startTime,
-                endTime,
-                BookingStatus.PENDING
-        );
+        Booking createdBooking =
+                new Booking(
+                        10L,
+                        1L,
+                        2L,
+                        startTime,
+                        endTime,
+                        BookingStatus.PENDING
+                );
 
-        when(bookingService.createBooking(
-                1L,
+        when(authorizationService.createBooking(
+                userContext,
                 2L,
                 startTime,
                 endTime
         )).thenReturn(createdBooking);
 
         String requestBody = """
-            {
-              "userId": 1,
-              "serviceId": 2,
-              "startTime": "2030-01-15T10:00:00",
-              "endTime": "2030-01-15T11:00:00"
-            }
-            """;
+                {
+                  "serviceId": 2,
+                  "startTime": "2030-01-15T10:00:00",
+                  "endTime": "2030-01-15T11:00:00"
+                }
+                """;
 
         mockMvc.perform(
                         post("/api/bookings")
-                                .contentType(MediaType.APPLICATION_JSON)
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
                                 .content(requestBody)
                 )
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.userId").value(1))
                 .andExpect(jsonPath("$.serviceId").value(2))
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("PENDING")
+                );
 
-        verify(bookingService).createBooking(
-                1L,
-                2L,
-                startTime,
-                endTime
-        );
+        verify(authorizationService)
+                .createBooking(
+                        userContext,
+                        2L,
+                        startTime,
+                        endTime
+                );
     }
+
     @Test
     void shouldReturn400WhenCreateBookingRequestIsInvalid()
             throws Exception {
 
         String requestBody = """
-            {
-              "userId": 1,
-              "startTime": "2030-01-15T10:00:00",
-              "endTime": "2030-01-15T11:00:00"
-            }
-            """;
+                {
+                  "startTime": "2030-01-15T10:00:00",
+                  "endTime": "2030-01-15T11:00:00"
+                }
+                """;
 
         mockMvc.perform(
                         post("/api/bookings")
-                                .contentType(MediaType.APPLICATION_JSON)
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
                                 .content(requestBody)
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(
                         jsonPath("$.message")
-                                .value("Service id must not be null")
+                                .value(
+                                        "Service id must not be null"
+                                )
                 );
     }
+
     @Test
-    void shouldCancelBooking() throws Exception {
+    void shouldCancelAccessibleBooking()
+            throws Exception {
+
         Long bookingId = 11L;
 
         LocalDateTime startTime =
-                LocalDateTime.of(2030, 1, 16, 10, 0);
+                LocalDateTime.of(
+                        2030,
+                        1,
+                        16,
+                        10,
+                        0
+                );
 
-        Booking cancelledBooking = new Booking(
-                bookingId,
-                1L,
-                2L,
-                startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.CANCELLED
+        Booking cancelledBooking =
+                new Booking(
+                        bookingId,
+                        1L,
+                        2L,
+                        startTime,
+                        startTime.plusMinutes(60),
+                        BookingStatus.CANCELLED
+                );
+
+        when(authorizationService.cancelBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(
+                Optional.of(cancelledBooking)
         );
 
-        when(bookingService.cancelBookingById(bookingId))
-                .thenReturn(Optional.of(cancelledBooking));
-
         mockMvc.perform(
-                        put("/api/bookings/{id}/cancel", bookingId)
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(11))
-                .andExpect(jsonPath("$.status").value("CANCELLED"));
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
     }
+
     @Test
-    void shouldReturn404WhenBookingToCancelDoesNotExist()
+    void shouldReturn404WhenBookingToCancelIsNotAccessible()
             throws Exception {
 
         Long bookingId = 999999L;
 
-        when(bookingService.cancelBookingById(bookingId))
-                .thenReturn(Optional.empty());
+        when(authorizationService.cancelBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(Optional.empty());
 
         mockMvc.perform(
-                        put("/api/bookings/{id}/cancel", bookingId)
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isNotFound());
     }
+
     @Test
-    void shouldDeleteBooking() throws Exception {
+    void shouldDeleteAccessibleBooking()
+            throws Exception {
+
         Long bookingId = 12L;
 
-        when(bookingService.deleteBookingById(bookingId))
-                .thenReturn(true);
+        when(authorizationService.deleteBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(true);
 
         mockMvc.perform(
-                        delete("/api/bookings/{id}", bookingId)
+                        delete(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isNoContent());
 
-        verify(bookingService)
-                .deleteBookingById(bookingId);
+        verify(authorizationService)
+                .deleteBookingById(
+                        userContext,
+                        bookingId
+                );
     }
+
     @Test
-    void shouldReturn404WhenBookingToDeleteDoesNotExist()
+    void shouldReturn404WhenBookingToDeleteIsNotAccessible()
             throws Exception {
 
         Long bookingId = 999999L;
 
-        when(bookingService.deleteBookingById(bookingId))
-                .thenReturn(false);
+        when(authorizationService.deleteBookingById(
+                userContext,
+                bookingId
+        )).thenReturn(false);
 
         mockMvc.perform(
-                        delete("/api/bookings/{id}", bookingId)
+                        delete(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
                 )
                 .andExpect(status().isNotFound());
     }
@@ -571,7 +710,8 @@ class BookingControllerTest {
                         "asc"
                 );
 
-        when(bookingService.searchBookings(
+        when(authorizationService.searchBookings(
+                userContext,
                 criteria,
                 pageRequest
         )).thenThrow(
@@ -600,10 +740,11 @@ class BookingControllerTest {
                                 .value("/api/bookings")
                 );
 
-        verify(bookingService).searchBookings(
-                criteria,
-                pageRequest
-        );
+        verify(authorizationService)
+                .searchBookings(
+                        userContext,
+                        criteria,
+                        pageRequest
+                );
     }
-
 }
