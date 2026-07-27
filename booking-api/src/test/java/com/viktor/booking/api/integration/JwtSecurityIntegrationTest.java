@@ -93,6 +93,10 @@ class JwtSecurityIntegrationTest {
                 );
 
         verifyAdminCanCreateService(adminToken);
+
+        verifyRemovedUserCreationEndpointReturns404(
+                adminToken
+        );
     }
 
     private String registerUserAndExtractToken()
@@ -284,6 +288,37 @@ class JwtSecurityIntegrationTest {
                                 )
                 );
     }
+
+    private void verifyRemovedUserCreationEndpointReturns404(
+            String adminToken
+    ) throws Exception {
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                "removed-endpoint@example.com",
+                                "password",
+                                "Password123!"
+                        )
+                );
+
+        mockMvc.perform(
+                        post("/api/users")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                )
+                .andExpect(
+                        status().isNotFound()
+                );
+    }
+
 
     private String createServiceRequestBody(
             String name
