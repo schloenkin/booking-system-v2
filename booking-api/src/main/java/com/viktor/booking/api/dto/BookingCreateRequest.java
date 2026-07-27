@@ -6,9 +6,6 @@ import java.time.LocalDateTime;
 
 public class BookingCreateRequest {
 
-    @NotNull(message = "User id must not be null")
-    private Long userId;
-
     @NotNull(message = "Service id must not be null")
     private Long serviceId;
 
@@ -17,10 +14,6 @@ public class BookingCreateRequest {
 
     @NotNull(message = "End time must not be null")
     private LocalDateTime endTime;
-
-    public Long getUserId() {
-        return userId;
-    }
 
     public Long getServiceId() {
         return serviceId;
