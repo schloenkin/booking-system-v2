@@ -82,6 +82,80 @@ class JpaUserRepositoryAdapterIntegrationTest {
     }
 
     @Test
+    void shouldFindUserByEmail() {
+        User userToSave = new User(
+                null,
+                "find-by-email@example.com",
+                "hashed-password",
+                UserRole.USER
+        );
+
+        User savedUser =
+                userRepositoryAdapter.save(userToSave);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        User foundUser = userRepositoryAdapter
+                .findByEmail("find-by-email@example.com")
+                .orElseThrow();
+
+        assertThat(foundUser.getId())
+                .isEqualTo(savedUser.getId());
+
+        assertThat(foundUser.getEmail())
+                .isEqualTo("find-by-email@example.com");
+
+        assertThat(foundUser.getPasswordHash())
+                .isEqualTo("hashed-password");
+
+        assertThat(foundUser.getRole())
+                .isEqualTo(UserRole.USER);
+    }
+
+    @Test
+    void shouldReturnEmptyWhenUserEmailDoesNotExist() {
+        var result = userRepositoryAdapter.findByEmail(
+                "missing-user@example.com"
+        );
+
+        assertThat(result)
+                .isEmpty();
+    }
+
+    @Test
+    void shouldReturnTrueWhenUserEmailExists() {
+        User userToSave = new User(
+                null,
+                "existing-email@example.com",
+                "hashed-password",
+                UserRole.USER
+        );
+
+        userRepositoryAdapter.save(userToSave);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        boolean result = userRepositoryAdapter.existsByEmail(
+                "existing-email@example.com"
+        );
+
+        assertThat(result)
+                .isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenUserEmailDoesNotExist() {
+        boolean result = userRepositoryAdapter.existsByEmail(
+                "not-existing-email@example.com"
+        );
+
+        assertThat(result)
+                .isFalse();
+    }
+
+    @Test
     void shouldReturnEmptyWhenUserDoesNotExist() {
         var result =
                 userRepositoryAdapter.findById(999999L);

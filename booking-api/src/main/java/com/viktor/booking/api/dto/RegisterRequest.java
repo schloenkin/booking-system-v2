@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public class UserCreateRequest {
+public class RegisterRequest {
 
     @NotBlank(message = "Email must not be blank")
     @Email(message = "Email must be valid")
