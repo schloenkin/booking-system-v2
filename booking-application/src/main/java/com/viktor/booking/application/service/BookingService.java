@@ -14,7 +14,6 @@ import com.viktor.booking.domain.model.BookableService;
 import com.viktor.booking.application.exception.InvalidBookingDurationException;
 import com.viktor.booking.application.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingTimeConflictException;
-import com.viktor.booking.application.exception.BookingAlreadyCancelledException;
 import org.springframework.transaction.annotation.Transactional;
 import com.viktor.booking.application.exception.InvalidBookingSearchException;
 import com.viktor.booking.application.query.BookingSearchCriteria;
@@ -175,17 +174,25 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
+    @Transactional
     public boolean deleteBookingById(Long id) {
-        Optional<Booking> booking = bookingRepository.findById(id);
+        Optional<Booking> booking =
+                bookingRepository.findById(id);
 
         if (booking.isEmpty()) {
             return false;
         }
 
+        Booking existingBooking = booking.get();
+
+        existingBooking.ensureCanBeDeleted();
+
         bookingRepository.deleteById(id);
+
         return true;
     }
 
+    @Transactional
     public Optional<Booking> cancelBookingById(Long id) {
         Optional<Booking> booking =
                 bookingRepository.findById(id);
@@ -194,13 +201,13 @@ public class BookingService {
             return Optional.empty();
         }
 
-        if (booking.get().getStatus() == BookingStatus.CANCELLED) {
-            throw new BookingAlreadyCancelledException(id);
-        }
+        Booking existingBooking = booking.get();
+
+        existingBooking.cancel();
 
         return bookingRepository.updateStatus(
                 id,
-                BookingStatus.CANCELLED
+                existingBooking.getStatus()
         );
     }
 

@@ -16,6 +16,28 @@ public class BookingAccessPolicy {
                 .equals(booking.getUserId());
     }
 
+    public boolean canConfirm(
+            AuthenticatedUserContext context
+    ) {
+        return context.isAdmin();
+    }
+
+    public boolean canCancel(
+            AuthenticatedUserContext context,
+            Booking booking
+    ) {
+        return canAccess(
+                context,
+                booking
+        );
+    }
+
+    public boolean canDelete(
+            AuthenticatedUserContext context
+    ) {
+        return context.isAdmin();
+    }
+
     public BookingSearchCriteria restrictSearch(
             AuthenticatedUserContext context,
             BookingSearchCriteria requestedCriteria

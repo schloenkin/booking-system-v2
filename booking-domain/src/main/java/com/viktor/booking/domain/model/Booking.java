@@ -2,6 +2,8 @@ package com.viktor.booking.domain.model;
 
 import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
+import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
+import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
 
 import java.time.LocalDateTime;
 
@@ -62,10 +64,6 @@ public class Booking {
         return status;
     }
 
-    public void setStatus(BookingStatus status) {
-        this.status = status;
-    }
-
     public void confirm() {
         if (status != BookingStatus.PENDING) {
             throw new BookingCannotBeConfirmedException(status);
@@ -73,4 +71,21 @@ public class Booking {
 
         this.status = BookingStatus.CONFIRMED;
     }
+
+    public void cancel() {
+        if (status != BookingStatus.PENDING
+                && status != BookingStatus.CONFIRMED) {
+            throw new BookingCannotBeCancelledException(status);
+        }
+
+        this.status = BookingStatus.CANCELLED;
+    }
+    public void ensureCanBeDeleted() {
+        if (status != BookingStatus.CANCELLED) {
+            throw new BookingCannotBeDeletedException(
+                    status
+            );
+        }
+    }
+
 }

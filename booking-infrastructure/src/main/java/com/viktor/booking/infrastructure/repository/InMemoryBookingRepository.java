@@ -184,12 +184,28 @@ public class InMemoryBookingRepository implements BookingRepository {
             Long id,
             BookingStatus status
     ) {
-        return findById(id)
-                .map(booking -> {
-                    booking.setStatus(status);
-                    return booking;
-                });
+        for (int index = 0; index < bookings.size(); index++) {
+            Booking existingBooking = bookings.get(index);
+
+            if (existingBooking.getId().equals(id)) {
+                Booking updatedBooking = new Booking(
+                        existingBooking.getId(),
+                        existingBooking.getUserId(),
+                        existingBooking.getServiceId(),
+                        existingBooking.getStartTime(),
+                        existingBooking.getEndTime(),
+                        status
+                );
+
+                bookings.set(index, updatedBooking);
+
+                return Optional.of(updatedBooking);
+            }
+        }
+
+        return Optional.empty();
     }
+
 
     @Override
     public void deleteById(Long id) {

@@ -1,5 +1,6 @@
 package com.viktor.booking.application.service;
 
+import com.viktor.booking.application.exception.BookingOperationForbiddenException;
 import com.viktor.booking.application.query.BookingSearchCriteria;
 import com.viktor.booking.application.query.PageRequestData;
 import com.viktor.booking.application.query.PageResult;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -299,7 +301,7 @@ class BookingAuthorizationServiceTest {
     }
 
     @Test
-    void shouldDeleteUsersOwnBooking() {
+    void shouldRejectDeletingUsersOwnBooking() {
         AuthenticatedUserContext context =
                 userContext(7L);
 
@@ -307,11 +309,50 @@ class BookingAuthorizationServiceTest {
                 bookingForUser(
                         70L,
                         7L,
-                        BookingStatus.PENDING
+                        BookingStatus.CANCELLED
                 );
 
         when(bookingService.getBookingById(70L))
                 .thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() ->
+                authorizationService.deleteBookingById(
+                        context,
+                        70L
+                )
+        )
+                .isInstanceOf(
+                        BookingOperationForbiddenException.class
+                )
+                .hasMessage(
+                        "Current user is not allowed to delete booking"
+                );
+
+        verify(bookingService)
+                .getBookingById(70L);
+
+        verify(bookingService, never())
+                .deleteBookingById(70L);
+    }
+
+    @Test
+    void shouldAllowAdminToDeleteBooking() {
+        AuthenticatedUserContext context =
+                adminContext(100L);
+
+        Booking cancelledBooking =
+                bookingForUser(
+                        70L,
+                        9L,
+                        BookingStatus.CANCELLED
+                );
+
+        when(bookingService.getBookingById(70L))
+                .thenReturn(
+                        Optional.of(
+                                cancelledBooking
+                        )
+                );
 
         when(bookingService.deleteBookingById(70L))
                 .thenReturn(true);
@@ -324,6 +365,9 @@ class BookingAuthorizationServiceTest {
 
         assertThat(result)
                 .isTrue();
+
+        verify(bookingService)
+                .getBookingById(70L);
 
         verify(bookingService)
                 .deleteBookingById(70L);
@@ -434,6 +478,45 @@ class BookingAuthorizationServiceTest {
 
         assertThat(result)
                 .isEmpty();
+
+        verify(bookingService, never())
+                .confirmBookingById(90L);
+    }
+
+    @Test
+    void shouldRejectUserConfirmationOfOwnBooking() {
+        AuthenticatedUserContext context =
+                userContext(7L);
+
+        Booking ownPendingBooking =
+                bookingForUser(
+                        90L,
+                        7L,
+                        BookingStatus.PENDING
+                );
+
+        when(bookingService.getBookingById(90L))
+                .thenReturn(
+                        Optional.of(
+                                ownPendingBooking
+                        )
+                );
+
+        assertThatThrownBy(() ->
+                authorizationService.confirmBookingById(
+                        context,
+                        90L
+                )
+        )
+                .isInstanceOf(
+                        BookingOperationForbiddenException.class
+                )
+                .hasMessage(
+                        "Current user is not allowed to confirm booking"
+                );
+
+        verify(bookingService)
+                .getBookingById(90L);
 
         verify(bookingService, never())
                 .confirmBookingById(90L);

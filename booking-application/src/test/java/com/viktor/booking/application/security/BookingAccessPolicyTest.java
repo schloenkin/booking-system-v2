@@ -76,6 +76,126 @@ class BookingAccessPolicyTest {
     }
 
     @Test
+    void shouldAllowAdminToConfirmBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        100L,
+                        UserRole.ADMIN
+                );
+
+        boolean result =
+                accessPolicy.canConfirm(context);
+
+        assertThat(result)
+                .isTrue();
+    }
+
+    @Test
+    void shouldDenyUserToConfirmBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        7L,
+                        UserRole.USER
+                );
+
+        boolean result =
+                accessPolicy.canConfirm(context);
+
+        assertThat(result)
+                .isFalse();
+    }
+
+    @Test
+    void shouldAllowUserToCancelOwnBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        7L,
+                        UserRole.USER
+                );
+
+        Booking booking = createBookingForUser(7L);
+
+        boolean result =
+                accessPolicy.canCancel(
+                        context,
+                        booking
+                );
+
+        assertThat(result)
+                .isTrue();
+    }
+
+    @Test
+    void shouldDenyUserCancellationOfAnotherUsersBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        7L,
+                        UserRole.USER
+                );
+
+        Booking booking = createBookingForUser(9L);
+
+        boolean result =
+                accessPolicy.canCancel(
+                        context,
+                        booking
+                );
+
+        assertThat(result)
+                .isFalse();
+    }
+
+    @Test
+    void shouldAllowAdminToCancelAnyBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        100L,
+                        UserRole.ADMIN
+                );
+
+        Booking booking = createBookingForUser(9L);
+
+        boolean result =
+                accessPolicy.canCancel(
+                        context,
+                        booking
+                );
+
+        assertThat(result)
+                .isTrue();
+    }
+
+    @Test
+    void shouldAllowAdminToDeleteBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        100L,
+                        UserRole.ADMIN
+                );
+
+        boolean result =
+                accessPolicy.canDelete(context);
+
+        assertThat(result)
+                .isTrue();
+    }
+
+    @Test
+    void shouldDenyUserToDeleteBooking() {
+        AuthenticatedUserContext context =
+                new AuthenticatedUserContext(
+                        7L,
+                        UserRole.USER
+                );
+
+        boolean result =
+                accessPolicy.canDelete(context);
+
+        assertThat(result)
+                .isFalse();
+    }
+
+    @Test
     void shouldRestrictUserSearchToOwnUserId() {
         AuthenticatedUserContext context =
                 new AuthenticatedUserContext(

@@ -1,5 +1,6 @@
 package com.viktor.booking.application.service;
 
+import com.viktor.booking.application.exception.BookingOperationForbiddenException;
 import com.viktor.booking.application.query.BookingSearchCriteria;
 import com.viktor.booking.application.query.PageRequestData;
 import com.viktor.booking.application.query.PageResult;
@@ -80,6 +81,12 @@ public class BookingAuthorizationService {
             return false;
         }
 
+        if (!accessPolicy.canDelete(context)) {
+            throw new BookingOperationForbiddenException(
+                    "delete"
+            );
+        }
+
         return bookingService.deleteBookingById(
                 bookingId
         );
@@ -99,6 +106,17 @@ public class BookingAuthorizationService {
             return Optional.empty();
         }
 
+        Booking booking = accessibleBooking.get();
+
+        if (!accessPolicy.canCancel(
+                context,
+                booking
+        )) {
+            throw new BookingOperationForbiddenException(
+                    "cancel"
+            );
+        }
+
         return bookingService.cancelBookingById(
                 bookingId
         );
@@ -116,6 +134,12 @@ public class BookingAuthorizationService {
 
         if (accessibleBooking.isEmpty()) {
             return Optional.empty();
+        }
+
+        if (!accessPolicy.canConfirm(context)) {
+            throw new BookingOperationForbiddenException(
+                    "confirm"
+            );
         }
 
         return bookingService.confirmBookingById(
