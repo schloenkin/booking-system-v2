@@ -12,17 +12,19 @@ import com.viktor.booking.domain.enums.BookingStatus;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import java.util.Arrays;
 import com.viktor.booking.application.exception.InvalidBookingTimeException;
-import com.viktor.booking.application.exception.BookingAlreadyCancelledException;
 import com.viktor.booking.application.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingTimeConflictException;
 import com.viktor.booking.application.exception.BookableServiceNotFoundException;
 import com.viktor.booking.application.exception.InactiveBookableServiceException;
 import com.viktor.booking.application.exception.InvalidBookingDurationException;
 import com.viktor.booking.application.exception.UserNotFoundException;
-import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.application.exception.InvalidBookingSearchException;
+import com.viktor.booking.application.exception.BookingOperationForbiddenException;
 import com.viktor.booking.application.exception.InvalidCredentialsException;
 import com.viktor.booking.application.exception.UserAlreadyExistsException;
+import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
+import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
+import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -147,6 +149,7 @@ public class GlobalExceptionHandler {
                 .badRequest()
                 .body(errorResponse);
     }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentialsException(
             InvalidCredentialsException exception,
@@ -165,11 +168,29 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
 
+    @ExceptionHandler(BookingOperationForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenException(
+            BookingOperationForbiddenException exception,
+            HttpServletRequest request
+    ) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                HttpStatus.FORBIDDEN.toString(),
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(errorResponse);
+    }
+
     @ExceptionHandler({
             InactiveBookableServiceException.class,
             BookingTimeConflictException.class,
-            BookingAlreadyCancelledException.class,
+            BookingCannotBeCancelledException.class,
             BookingCannotBeConfirmedException.class,
+            BookingCannotBeDeletedException.class,
             UserAlreadyExistsException.class
     })
     public ResponseEntity<ErrorResponse> handleConflictException(

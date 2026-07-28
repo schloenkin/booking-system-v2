@@ -1,10 +1,13 @@
 package com.viktor.booking.api.exception;
 
-import com.viktor.booking.application.exception.BookingAlreadyCancelledException;
+import com.viktor.booking.domain.enums.BookingStatus;
+import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
+import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
 import com.viktor.booking.application.exception.BookingInPastException;
 import com.viktor.booking.application.exception.InvalidCredentialsException;
 import com.viktor.booking.application.exception.UserAlreadyExistsException;
 import com.viktor.booking.application.exception.UserNotFoundException;
+import com.viktor.booking.application.exception.BookingOperationForbiddenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,6 +57,16 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void shouldReturn409WhenBookingCannotBeDeleted()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/test/delete-conflict")
+                )
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void shouldReturn401WhenCredentialsAreInvalid()
             throws Exception {
 
@@ -61,6 +74,16 @@ class GlobalExceptionHandlerTest {
                         get("/test/invalid-credentials")
                 )
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturn403WhenBookingOperationIsForbidden()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/test/forbidden")
+                )
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -88,12 +111,28 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/conflict")
         void conflict() {
-            throw new BookingAlreadyCancelledException(1L);
+            throw new BookingCannotBeCancelledException(
+                    BookingStatus.CANCELLED
+            );
+        }
+
+        @GetMapping("/test/delete-conflict")
+        void deleteConflict() {
+            throw new BookingCannotBeDeletedException(
+                    BookingStatus.CONFIRMED
+            );
         }
 
         @GetMapping("/test/invalid-credentials")
         void invalidCredentials() {
             throw new InvalidCredentialsException();
+        }
+
+        @GetMapping("/test/forbidden")
+        void forbidden() {
+            throw new BookingOperationForbiddenException(
+                    "delete"
+            );
         }
 
         @GetMapping("/test/user-already-exists")

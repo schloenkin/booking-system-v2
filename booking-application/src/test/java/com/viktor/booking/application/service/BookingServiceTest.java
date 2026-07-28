@@ -22,10 +22,11 @@ import com.viktor.booking.application.exception.BookingTimeConflictException;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.never;
 import static org.assertj.core.api.Assertions.assertThat;
-import com.viktor.booking.application.exception.BookingAlreadyCancelledException;
 import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.model.Booking;
+import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
+import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
 import com.viktor.booking.application.exception.InvalidBookingSearchException;
 import com.viktor.booking.application.query.BookingSearchCriteria;
 import com.viktor.booking.application.query.PageRequestData;
@@ -363,11 +364,14 @@ class BookingServiceTest {
                 bookingService.cancelBookingById(bookingId)
         )
                 .isInstanceOf(
-                        BookingAlreadyCancelledException.class
+                        BookingCannotBeCancelledException.class
                 )
                 .hasMessage(
-                        "Booking is already cancelled with id: 5"
+                        "Booking cannot be cancelled from status: CANCELLED"
                 );
+
+        assertThat(cancelledBooking.getStatus())
+                .isEqualTo(BookingStatus.CANCELLED);
 
         verify(bookingRepository)
                 .findById(bookingId);
@@ -378,6 +382,7 @@ class BookingServiceTest {
                         BookingStatus.CANCELLED
                 );
     }
+
 
     @Test
     void shouldCancelPendingBooking() {
@@ -751,6 +756,133 @@ class BookingServiceTest {
 
         verifyNoInteractions(bookingRepository);
     }
+
+    @Test
+    void shouldReturnFalseWhenBookingToDeleteDoesNotExist() {
+        Long bookingId = 70L;
+
+        when(bookingRepository.findById(bookingId))
+                .thenReturn(Optional.empty());
+
+        boolean result =
+                bookingService.deleteBookingById(
+                        bookingId
+                );
+
+        assertThat(result)
+                .isFalse();
+
+        verify(bookingRepository)
+                .findById(bookingId);
+
+        verify(bookingRepository, never())
+                .deleteById(bookingId);
+    }
+
+    @Test
+    void shouldDeleteCancelledBooking() {
+        Long bookingId = 70L;
+
+        Booking cancelledBooking =
+                bookingWithStatus(
+                        bookingId,
+                        BookingStatus.CANCELLED
+                );
+
+        when(bookingRepository.findById(bookingId))
+                .thenReturn(
+                        Optional.of(
+                                cancelledBooking
+                        )
+                );
+
+        boolean result =
+                bookingService.deleteBookingById(
+                        bookingId
+                );
+
+        assertThat(result)
+                .isTrue();
+
+        verify(bookingRepository)
+                .findById(bookingId);
+
+        verify(bookingRepository)
+                .deleteById(bookingId);
+    }
+
+    @Test
+    void shouldRejectDeletingPendingBooking() {
+        Long bookingId = 70L;
+
+        Booking pendingBooking =
+                bookingWithStatus(
+                        bookingId,
+                        BookingStatus.PENDING
+                );
+
+        when(bookingRepository.findById(bookingId))
+                .thenReturn(
+                        Optional.of(
+                                pendingBooking
+                        )
+                );
+
+        assertThatThrownBy(() ->
+                bookingService.deleteBookingById(
+                        bookingId
+                )
+        )
+                .isInstanceOf(
+                        BookingCannotBeDeletedException.class
+                )
+                .hasMessage(
+                        "Booking cannot be deleted from status: PENDING"
+                );
+
+        verify(bookingRepository)
+                .findById(bookingId);
+
+        verify(bookingRepository, never())
+                .deleteById(bookingId);
+    }
+
+    @Test
+    void shouldRejectDeletingConfirmedBooking() {
+        Long bookingId = 70L;
+
+        Booking confirmedBooking =
+                bookingWithStatus(
+                        bookingId,
+                        BookingStatus.CONFIRMED
+                );
+
+        when(bookingRepository.findById(bookingId))
+                .thenReturn(
+                        Optional.of(
+                                confirmedBooking
+                        )
+                );
+
+        assertThatThrownBy(() ->
+                bookingService.deleteBookingById(
+                        bookingId
+                )
+        )
+                .isInstanceOf(
+                        BookingCannotBeDeletedException.class
+                )
+                .hasMessage(
+                        "Booking cannot be deleted from status: CONFIRMED"
+                );
+
+        verify(bookingRepository)
+                .findById(bookingId);
+
+        verify(bookingRepository, never())
+                .deleteById(bookingId);
+    }
+
     @Test
     void shouldRejectBookingSearchWhenSortFieldIsUnsupported() {
         BookingSearchCriteria criteria =
@@ -881,6 +1013,28 @@ class BookingServiceTest {
                         criteria,
                         pageRequest
                 );
+    }
+    private Booking bookingWithStatus(
+            Long bookingId,
+            BookingStatus status
+    ) {
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        10,
+                        0
+                );
+
+        return new Booking(
+                bookingId,
+                7L,
+                20L,
+                startTime,
+                startTime.plusHours(1),
+                status
+        );
     }
 
     private LocalDateTime futureStartTime() {

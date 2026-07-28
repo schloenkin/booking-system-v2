@@ -10,6 +10,8 @@ import com.viktor.booking.application.security.AuthenticatedUserContext;
 import com.viktor.booking.application.service.BookingAuthorizationService;
 import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.enums.UserRole;
+import com.viktor.booking.application.exception.BookingOperationForbiddenException;
+import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.model.Booking;
 import com.viktor.booking.domain.model.User;
@@ -50,11 +52,35 @@ class BookingControllerTest {
 
     @BeforeEach
     void setUp() {
-        User user = new User(
+        authenticateAs(
                 1L,
-                "user@example.com",
-                "hashed-password",
                 UserRole.USER
+        );
+
+        BookingController bookingController =
+                new BookingController(
+                        authorizationService
+                );
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(bookingController)
+                .setCustomArgumentResolvers(
+                        new AuthenticationPrincipalArgumentResolver()
+                )
+                .setControllerAdvice(
+                        new GlobalExceptionHandler()
+                )
+                .build();
+    }
+    private void authenticateAs(
+            Long userId,
+            UserRole role
+    ) {
+        User user = new User(
+                userId,
+                "user-" + userId + "@example.com",
+                "hashed-password",
+                role
         );
 
         AuthenticatedUser authenticatedUser =
@@ -73,24 +99,9 @@ class BookingControllerTest {
 
         userContext =
                 new AuthenticatedUserContext(
-                        1L,
-                        UserRole.USER
+                        userId,
+                        role
                 );
-
-        BookingController bookingController =
-                new BookingController(
-                        authorizationService
-                );
-
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(bookingController)
-                .setCustomArgumentResolvers(
-                        new AuthenticationPrincipalArgumentResolver()
-                )
-                .setControllerAdvice(
-                        new GlobalExceptionHandler()
-                )
-                .build();
     }
 
     @AfterEach
@@ -99,8 +110,12 @@ class BookingControllerTest {
     }
 
     @Test
-    void shouldReturnConfirmedBooking()
+    void shouldReturnConfirmedBookingForAdmin()
             throws Exception {
+        authenticateAs(
+                100L,
+                UserRole.ADMIN
+        );
 
         Long bookingId = 8L;
 
@@ -164,6 +179,43 @@ class BookingControllerTest {
                         )
                 )
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn403WhenUserTriesToConfirmBooking()
+            throws Exception {
+
+        Long bookingId = 8L;
+
+        when(authorizationService.confirmBookingById(
+                userContext,
+                bookingId
+        )).thenThrow(
+                new BookingOperationForbiddenException(
+                        "confirm"
+                )
+        );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/confirm",
+                                bookingId
+                        )
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Current user is not allowed "
+                                                + "to confirm booking"
+                                )
+                );
+
+        verify(authorizationService)
+                .confirmBookingById(
+                        userContext,
+                        bookingId
+                );
     }
 
     @Test
@@ -644,8 +696,12 @@ class BookingControllerTest {
     }
 
     @Test
-    void shouldDeleteAccessibleBooking()
+    void shouldReturn204WhenAdminDeletesBooking()
             throws Exception {
+        authenticateAs(
+                100L,
+                UserRole.ADMIN
+        );
 
         Long bookingId = 12L;
 
@@ -661,6 +717,85 @@ class BookingControllerTest {
                         )
                 )
                 .andExpect(status().isNoContent());
+
+        verify(authorizationService)
+                .deleteBookingById(
+                        userContext,
+                        bookingId
+                );
+    }
+
+    @Test
+    void shouldReturn403WhenUserTriesToDeleteBooking()
+            throws Exception {
+
+        Long bookingId = 12L;
+
+        when(authorizationService.deleteBookingById(
+                userContext,
+                bookingId
+        )).thenThrow(
+                new BookingOperationForbiddenException(
+                        "delete"
+                )
+        );
+
+        mockMvc.perform(
+                        delete(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Current user is not allowed "
+                                                + "to delete booking"
+                                )
+                );
+
+        verify(authorizationService)
+                .deleteBookingById(
+                        userContext,
+                        bookingId
+                );
+    }
+
+    @Test
+    void shouldReturn409WhenBookingCannotBeDeleted()
+            throws Exception {
+
+        authenticateAs(
+                100L,
+                UserRole.ADMIN
+        );
+
+        Long bookingId = 12L;
+
+        when(authorizationService.deleteBookingById(
+                userContext,
+                bookingId
+        )).thenThrow(
+                new BookingCannotBeDeletedException(
+                        BookingStatus.CONFIRMED
+                )
+        );
+
+        mockMvc.perform(
+                        delete(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
+                )
+                .andExpect(status().isConflict())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Booking cannot be deleted "
+                                                + "from status: CONFIRMED"
+                                )
+                );
 
         verify(authorizationService)
                 .deleteBookingById(
