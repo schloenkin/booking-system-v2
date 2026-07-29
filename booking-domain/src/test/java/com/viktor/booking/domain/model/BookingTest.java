@@ -244,5 +244,132 @@ class BookingTest {
         assertThat(booking.getStatus())
                 .isEqualTo(BookingStatus.CONFIRMED);
     }
+    @Test
+    void shouldRejectBookingWhenStartTimeIsNull() {
+        LocalDateTime endTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        11,
+                        0
+                );
+
+        assertThatThrownBy(() -> new Booking(
+                1L,
+                1L,
+                2L,
+                null,
+                endTime,
+                BookingStatus.PENDING
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "Start time must not be null"
+                );
+    }
+
+    @Test
+    void shouldRejectBookingWhenEndTimeIsNull() {
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        10,
+                        0
+                );
+
+        assertThatThrownBy(() -> new Booking(
+                1L,
+                1L,
+                2L,
+                startTime,
+                null,
+                BookingStatus.PENDING
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "End time must not be null"
+                );
+    }
+
+    @Test
+    void shouldRejectBookingWhenEndTimeEqualsStartTime() {
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        10,
+                        0
+                );
+
+        assertThatThrownBy(() -> new Booking(
+                1L,
+                1L,
+                2L,
+                startTime,
+                startTime,
+                BookingStatus.PENDING
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "End time must be after start time"
+                );
+    }
+
+    @Test
+    void shouldRejectBookingWhenEndTimeIsBeforeStartTime() {
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        10,
+                        0
+                );
+
+        LocalDateTime endTime =
+                startTime.minusMinutes(30);
+
+        assertThatThrownBy(() -> new Booking(
+                1L,
+                1L,
+                2L,
+                startTime,
+                endTime,
+                BookingStatus.PENDING
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "End time must be after start time"
+                );
+    }
+
+    @Test
+    void shouldRejectBookingWhenStatusIsNull() {
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        10,
+                        0
+                );
+
+        assertThatThrownBy(() -> new Booking(
+                1L,
+                1L,
+                2L,
+                startTime,
+                startTime.plusHours(1),
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "Booking status must not be null"
+                );
+    }
 
 }
