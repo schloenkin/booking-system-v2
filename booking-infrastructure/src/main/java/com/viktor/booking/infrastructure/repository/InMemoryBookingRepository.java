@@ -23,7 +23,7 @@ public class InMemoryBookingRepository implements BookingRepository {
     private Long nextId = 3L;
 
     public InMemoryBookingRepository() {
-        bookings.add(new Booking(
+        bookings.add(Booking.restore(
                 1L,
                 1L,
                 1L,
@@ -32,7 +32,7 @@ public class InMemoryBookingRepository implements BookingRepository {
                 BookingStatus.CONFIRMED
         ));
 
-        bookings.add(new Booking(
+        bookings.add(Booking.restore(
                 2L,
                 2L,
                 2L,
@@ -164,7 +164,7 @@ public class InMemoryBookingRepository implements BookingRepository {
 
     @Override
     public Booking save(Booking booking) {
-        Booking savedBooking = new Booking(
+        Booking savedBooking = Booking.restore(
                 nextId,
                 booking.getUserId(),
                 booking.getServiceId(),
@@ -188,7 +188,7 @@ public class InMemoryBookingRepository implements BookingRepository {
             Booking existingBooking = bookings.get(index);
 
             if (existingBooking.getId().equals(id)) {
-                Booking updatedBooking = new Booking(
+                Booking updatedBooking = Booking.restore(
                         existingBooking.getId(),
                         existingBooking.getUserId(),
                         existingBooking.getServiceId(),

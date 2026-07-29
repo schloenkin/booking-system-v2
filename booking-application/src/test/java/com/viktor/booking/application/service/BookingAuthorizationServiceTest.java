@@ -600,7 +600,7 @@ class BookingAuthorizationServiceTest {
                         0
                 );
 
-        return new Booking(
+        return Booking.restore(
                 bookingId,
                 userId,
                 15L,

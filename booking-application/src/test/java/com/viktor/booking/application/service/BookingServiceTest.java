@@ -348,7 +348,7 @@ class BookingServiceTest {
         Long bookingId = 5L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -389,7 +389,7 @@ class BookingServiceTest {
         Long bookingId = 6L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking pendingBooking = new Booking(
+        Booking pendingBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -398,7 +398,7 @@ class BookingServiceTest {
                 BookingStatus.PENDING
         );
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -436,7 +436,7 @@ class BookingServiceTest {
         Long bookingId = 7L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking confirmedBooking = new Booking(
+        Booking confirmedBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -445,7 +445,7 @@ class BookingServiceTest {
                 BookingStatus.CONFIRMED
         );
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -501,7 +501,7 @@ class BookingServiceTest {
                 true
         );
 
-        Booking savedBooking = new Booking(
+        Booking savedBooking = Booking.restore(
                 10L,
                 userId,
                 serviceId,
@@ -565,7 +565,7 @@ class BookingServiceTest {
         Long bookingId = 8L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking pendingBooking = new Booking(
+        Booking pendingBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -574,7 +574,7 @@ class BookingServiceTest {
                 BookingStatus.PENDING
         );
 
-        Booking confirmedBooking = new Booking(
+        Booking confirmedBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -615,7 +615,7 @@ class BookingServiceTest {
         Long bookingId = 9L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -957,7 +957,7 @@ class BookingServiceTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2030, 1, 15, 10, 0);
 
-        Booking booking = new Booking(
+        Booking booking = Booking.restore(
                 1L,
                 1L,
                 2L,
@@ -1027,7 +1027,7 @@ class BookingServiceTest {
                         0
                 );
 
-        return new Booking(
+        return Booking.restore(
                 bookingId,
                 7L,
                 20L,

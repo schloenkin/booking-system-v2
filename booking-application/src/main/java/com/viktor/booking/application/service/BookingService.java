@@ -162,13 +162,11 @@ public class BookingService {
             throw new BookingTimeConflictException(serviceId);
         }
 
-        Booking booking = new Booking(
-                null,
+        Booking booking = Booking.create(
                 userId,
                 serviceId,
                 startTime,
-                endTime,
-                BookingStatus.PENDING
+                endTime
         );
 
         return bookingRepository.save(booking);

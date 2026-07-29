@@ -40,7 +40,7 @@ public class BookingMapper {
             return null;
         }
 
-        return new Booking(
+        return Booking.restore(
                 entity.getId(),
                 entity.getUser().getId(),
                 entity.getService().getId(),

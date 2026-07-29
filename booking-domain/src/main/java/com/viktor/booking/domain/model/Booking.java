@@ -16,7 +16,59 @@ public class Booking {
     private LocalDateTime endTime;
     private BookingStatus status;
 
-    public Booking(Long id, Long userId, Long serviceId, LocalDateTime startTime, LocalDateTime endTime, BookingStatus status) {
+    public static Booking create(
+            Long userId,
+            Long serviceId,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    ) {
+        return new Booking(
+                null,
+                userId,
+                serviceId,
+                startTime,
+                endTime,
+                BookingStatus.PENDING
+        );
+    }
+
+    public static Booking restore(
+            Long id,
+            Long userId,
+            Long serviceId,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            BookingStatus status
+    ) {
+        if (id == null) {
+            throw new IllegalArgumentException(
+                    "Booking id must not be null"
+            );
+        }
+
+        return new Booking(
+                id,
+                userId,
+                serviceId,
+                startTime,
+                endTime,
+                status
+        );
+    }
+
+    private Booking(Long id, Long userId, Long serviceId, LocalDateTime startTime, LocalDateTime endTime, BookingStatus status) {
+        if (userId == null) {
+            throw new IllegalArgumentException(
+                    "User id must not be null"
+            );
+        }
+
+        if (serviceId == null) {
+            throw new IllegalArgumentException(
+                    "Service id must not be null"
+            );
+        }
+
         if (startTime == null) {
             throw new IllegalArgumentException("Start time must not be null");
         }

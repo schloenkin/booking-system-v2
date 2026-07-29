@@ -85,13 +85,11 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime endTime =
                 startTime.plusMinutes(60);
 
-        Booking bookingToSave = new Booking(
-                null,
+        Booking bookingToSave = Booking.create(
                 userId,
                 serviceId,
                 startTime,
-                endTime,
-                BookingStatus.PENDING
+                endTime
         );
 
         Booking savedBooking =
@@ -148,13 +146,11 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2026, 8, 6, 10, 0);
 
-        Booking bookingToSave = new Booking(
-                null,
+        Booking bookingToSave = Booking.create(
                 user.getId(),
                 service.getId(),
                 startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
+                startTime.plusMinutes(60)
         );
 
         Booking savedBooking =
@@ -198,13 +194,11 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2026, 8, 7, 10, 0);
 
-        Booking booking = new Booking(
-                null,
+        Booking booking = Booking.create(
                 999999L,
                 service.getId(),
                 startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
+                startTime.plusMinutes(60)
         );
 
         assertThatThrownBy(() ->
@@ -227,13 +221,11 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2026, 8, 8, 10, 0);
 
-        Booking booking = new Booking(
-                null,
+        Booking booking = Booking.create(
                 user.getId(),
                 999999L,
                 startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
+                startTime.plusMinutes(60)
         );
 
         assertThatThrownBy(() ->
@@ -267,23 +259,21 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2026, 8, 9, 10, 0);
 
-        Booking pendingBooking = new Booking(
-                null,
+        Booking pendingBooking = Booking.create(
                 user.getId(),
                 service.getId(),
                 startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
+                startTime.plusMinutes(60)
         );
 
-        Booking cancelledBooking = new Booking(
-                null,
+        Booking cancelledBooking = Booking.create(
                 user.getId(),
                 service.getId(),
                 startTime.plusHours(2),
-                startTime.plusHours(3),
-                BookingStatus.CANCELLED
+                startTime.plusHours(3)
         );
+
+        cancelledBooking.cancel();
 
         Booking savedPendingBooking =
                 bookingRepositoryAdapter.save(pendingBooking);
@@ -330,13 +320,11 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2026, 8, 10, 10, 0);
 
-        Booking booking = new Booking(
-                null,
+        Booking booking = Booking.create(
                 user.getId(),
                 service.getId(),
                 startTime,
-                startTime.plusMinutes(60),
-                BookingStatus.PENDING
+                startTime.plusMinutes(60)
         );
 
         Booking savedBooking =
@@ -381,13 +369,11 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime existingStartTime =
                 LocalDateTime.of(2030, 1, 10, 10, 0);
 
-        Booking existingBooking = new Booking(
-                null,
+        Booking existingBooking = Booking.create(
                 user.getId(),
                 service.getId(),
                 existingStartTime,
-                existingStartTime.plusMinutes(60),
-                BookingStatus.PENDING
+                existingStartTime.plusMinutes(60)
         );
 
         bookingRepositoryAdapter.save(existingBooking);
@@ -428,15 +414,17 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime existingStartTime =
                 LocalDateTime.of(2030, 1, 11, 10, 0);
 
+        Booking confirmedBooking = Booking.create(
+                user.getId(),
+                service.getId(),
+                existingStartTime,
+                existingStartTime.plusMinutes(60)
+        );
+
+        confirmedBooking.confirm();
+
         bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
-                        user.getId(),
-                        service.getId(),
-                        existingStartTime,
-                        existingStartTime.plusMinutes(60),
-                        BookingStatus.CONFIRMED
-                )
+                confirmedBooking
         );
 
         entityManager.flush();
@@ -475,15 +463,17 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime existingStartTime =
                 LocalDateTime.of(2030, 1, 12, 10, 0);
 
+        Booking cancelledBooking = Booking.create(
+                user.getId(),
+                service.getId(),
+                existingStartTime,
+                existingStartTime.plusMinutes(60)
+        );
+
+        cancelledBooking.cancel();
+
         bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
-                        user.getId(),
-                        service.getId(),
-                        existingStartTime,
-                        existingStartTime.plusMinutes(60),
-                        BookingStatus.CANCELLED
-                )
+                cancelledBooking
         );
 
         entityManager.flush();
@@ -541,38 +531,37 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         LocalDateTime matchingStartTime =
                 LocalDateTime.of(2030, 2, 10, 10, 0);
 
-        Booking matchingBooking = bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
-                        firstUser.getId(),
-                        firstService.getId(),
-                        matchingStartTime,
-                        matchingStartTime.plusMinutes(60),
-                        BookingStatus.PENDING
-                )
+        Booking matchingBooking =
+                bookingRepositoryAdapter.save(
+                        Booking.create(
+                                firstUser.getId(),
+                                firstService.getId(),
+                                matchingStartTime,
+                                matchingStartTime.plusMinutes(60)
+                        )
+                );
+
+        Booking confirmedBooking = Booking.create(
+                firstUser.getId(),
+                firstService.getId(),
+                matchingStartTime.plusDays(1),
+                matchingStartTime.plusDays(1)
+                        .plusMinutes(60)
+        );
+
+        confirmedBooking.confirm();
+
+        bookingRepositoryAdapter.save(
+                confirmedBooking
         );
 
         bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
-                        firstUser.getId(),
-                        firstService.getId(),
-                        matchingStartTime.plusDays(1),
-                        matchingStartTime.plusDays(1)
-                                .plusMinutes(60),
-                        BookingStatus.CONFIRMED
-                )
-        );
-
-        bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
+                Booking.create(
                         secondUser.getId(),
                         secondService.getId(),
                         matchingStartTime.plusDays(2),
                         matchingStartTime.plusDays(2)
-                                .plusMinutes(60),
-                        BookingStatus.PENDING
+                                .plusMinutes(60)
                 )
         );
 
@@ -654,65 +643,55 @@ class JpaBookingRepositoryAdapterIntegrationTest {
                 LocalDateTime.of(2030, 3, 1, 10, 0);
 
         bookingRepositoryAdapter.save(
-                        new Booking(
-                                null,
-                                user.getId(),
-                                service.getId(),
-                                firstStartTime,
-                                firstStartTime.plusMinutes(60),
-                                BookingStatus.PENDING
-                        )
-                );
+                Booking.create(
+                        user.getId(),
+                        service.getId(),
+                        firstStartTime,
+                        firstStartTime.plusMinutes(60)
+                )
+        );
 
         Booking secondBooking =
                 bookingRepositoryAdapter.save(
-                        new Booking(
-                                null,
+                        Booking.create(
                                 user.getId(),
                                 service.getId(),
                                 firstStartTime.plusDays(1),
                                 firstStartTime.plusDays(1)
-                                        .plusMinutes(60),
-                                BookingStatus.PENDING
+                                        .plusMinutes(60)
                         )
                 );
 
         Booking thirdBooking =
                 bookingRepositoryAdapter.save(
-                        new Booking(
-                                null,
+                        Booking.create(
                                 user.getId(),
                                 service.getId(),
                                 firstStartTime.plusDays(2),
                                 firstStartTime.plusDays(2)
-                                        .plusMinutes(60),
-                                BookingStatus.PENDING
+                                        .plusMinutes(60)
                         )
                 );
 
         bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
+                Booking.create(
                         user.getId(),
                         service.getId(),
                         firstStartTime.plusDays(3),
                         firstStartTime.plusDays(3)
-                                .plusMinutes(60),
-                        BookingStatus.PENDING
+                                .plusMinutes(60)
                 )
         );
 
-        bookingRepositoryAdapter.save(
-                new Booking(
-                        null,
-                        user.getId(),
-                        service.getId(),
-                        firstStartTime.plusDays(4),
-                        firstStartTime.plusDays(4)
-                                .plusMinutes(60),
-                        BookingStatus.PENDING
-                )
-        );
+                bookingRepositoryAdapter.save(
+                        Booking.create(
+                                user.getId(),
+                                service.getId(),
+                                firstStartTime.plusDays(4),
+                                firstStartTime.plusDays(4)
+                                        .plusMinutes(60)
+                        )
+                );
 
         entityManager.flush();
         entityManager.clear();

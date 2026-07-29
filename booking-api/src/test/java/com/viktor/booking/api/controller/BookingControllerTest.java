@@ -123,7 +123,7 @@ class BookingControllerTest {
                 LocalDateTime.now().plusDays(1);
 
         Booking confirmedBooking =
-                new Booking(
+                Booking.restore(
                         bookingId,
                         1L,
                         2L,
@@ -257,7 +257,7 @@ class BookingControllerTest {
                 LocalDateTime.now().plusDays(1);
 
         Booking firstBooking =
-                new Booking(
+                Booking.restore(
                         1L,
                         1L,
                         2L,
@@ -267,7 +267,7 @@ class BookingControllerTest {
                 );
 
         Booking secondBooking =
-                new Booking(
+                Booking.restore(
                         2L,
                         1L,
                         4L,
@@ -373,7 +373,7 @@ class BookingControllerTest {
                 );
 
         Booking booking =
-                new Booking(
+                Booking.restore(
                         10L,
                         1L,
                         7L,
@@ -486,7 +486,7 @@ class BookingControllerTest {
                 LocalDateTime.now().plusDays(1);
 
         Booking booking =
-                new Booking(
+                Booking.restore(
                         bookingId,
                         1L,
                         2L,
@@ -553,7 +553,7 @@ class BookingControllerTest {
                 startTime.plusMinutes(60);
 
         Booking createdBooking =
-                new Booking(
+                Booking.restore(
                         10L,
                         1L,
                         2L,
@@ -645,7 +645,7 @@ class BookingControllerTest {
                 );
 
         Booking cancelledBooking =
-                new Booking(
+                Booking.restore(
                         bookingId,
                         1L,
                         2L,
