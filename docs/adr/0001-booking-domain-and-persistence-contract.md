@@ -9,8 +9,8 @@ A booking has a lifecycle represented by `BookingStatus`.
 
 Previously, parts of the application could change a booking status through the repository method:
 
-```java
-updateStatus(Long bookingId, BookingStatus status)
+```text
+updateStatus(Long bookingId, BookingStatus status);
 ```
 
 This allowed application or infrastructure code to persist a new status without requiring the corresponding domain operation on the `Booking` aggregate.
@@ -25,14 +25,14 @@ The `Booking` aggregate owns all business rules related to its state.
 
 Status changes must be performed through domain methods:
 
-```java
+```text
 booking.confirm();
 booking.cancel();
 ```
 
 Deletion eligibility must be checked through:
 
-```java
+```text
 booking.ensureCanBeDeleted();
 ```
 
@@ -73,7 +73,7 @@ Optional<Booking> update(Booking booking);
 
 The application flow is:
 
-```java
+```text
 Booking booking = bookingRepository.findById(id)
         .orElseThrow();
 
@@ -90,13 +90,13 @@ At present, `Booking` allows only its `status` to change after creation. The use
 
 New bookings must be created through:
 
-```java
+```text
 Booking.create(...);
 ```
 
 Existing bookings loaded from persistence must be reconstructed through:
 
-```java
+```text
 Booking.restore(...);
 ```
 
