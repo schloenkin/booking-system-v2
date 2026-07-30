@@ -23,7 +23,7 @@ public class InMemoryBookingRepository implements BookingRepository {
     private Long nextId = 3L;
 
     public InMemoryBookingRepository() {
-        bookings.add(new Booking(
+        bookings.add(Booking.restore(
                 1L,
                 1L,
                 1L,
@@ -32,7 +32,7 @@ public class InMemoryBookingRepository implements BookingRepository {
                 BookingStatus.CONFIRMED
         ));
 
-        bookings.add(new Booking(
+        bookings.add(Booking.restore(
                 2L,
                 2L,
                 2L,
@@ -164,7 +164,7 @@ public class InMemoryBookingRepository implements BookingRepository {
 
     @Override
     public Booking save(Booking booking) {
-        Booking savedBooking = new Booking(
+        Booking savedBooking = Booking.restore(
                 nextId,
                 booking.getUserId(),
                 booking.getServiceId(),
@@ -180,32 +180,46 @@ public class InMemoryBookingRepository implements BookingRepository {
     }
 
     @Override
-    public Optional<Booking> updateStatus(
-            Long id,
-            BookingStatus status
+    public Optional<Booking> update(
+            Booking booking
     ) {
-        for (int index = 0; index < bookings.size(); index++) {
-            Booking existingBooking = bookings.get(index);
+        if (booking.getId() == null) {
+            throw new IllegalArgumentException(
+                    "Booking id must not be null for update"
+            );
+        }
 
-            if (existingBooking.getId().equals(id)) {
-                Booking updatedBooking = new Booking(
-                        existingBooking.getId(),
-                        existingBooking.getUserId(),
-                        existingBooking.getServiceId(),
-                        existingBooking.getStartTime(),
-                        existingBooking.getEndTime(),
-                        status
+        for (int index = 0; index < bookings.size(); index++) {
+            Booking existingBooking =
+                    bookings.get(index);
+
+            if (existingBooking.getId()
+                    .equals(booking.getId())) {
+
+                Booking updatedBooking =
+                        Booking.restore(
+                                existingBooking.getId(),
+                                existingBooking.getUserId(),
+                                existingBooking.getServiceId(),
+                                existingBooking.getStartTime(),
+                                existingBooking.getEndTime(),
+                                booking.getStatus()
+                        );
+
+
+                bookings.set(
+                        index,
+                        updatedBooking
                 );
 
-                bookings.set(index, updatedBooking);
-
-                return Optional.of(updatedBooking);
+                return Optional.of(
+                        updatedBooking
+                );
             }
         }
 
         return Optional.empty();
     }
-
 
     @Override
     public void deleteById(Long id) {

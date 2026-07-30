@@ -291,7 +291,7 @@ class BookingAccessPolicyTest {
                         0
                 );
 
-        return new Booking(
+        return Booking.restore(
                 50L,
                 userId,
                 20L,

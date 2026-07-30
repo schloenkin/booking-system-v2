@@ -39,6 +39,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import java.util.Optional;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
@@ -348,7 +349,7 @@ class BookingServiceTest {
         Long bookingId = 5L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -377,19 +378,15 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository, never())
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CANCELLED
-                );
+                .update(any(Booking.class));
     }
-
 
     @Test
     void shouldCancelPendingBooking() {
         Long bookingId = 6L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking pendingBooking = new Booking(
+        Booking pendingBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -398,7 +395,7 @@ class BookingServiceTest {
                 BookingStatus.PENDING
         );
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -410,9 +407,8 @@ class BookingServiceTest {
         when(bookingRepository.findById(bookingId))
                 .thenReturn(Optional.of(pendingBooking));
 
-        when(bookingRepository.updateStatus(
-                bookingId,
-                BookingStatus.CANCELLED
+        when(bookingRepository.update(
+                pendingBooking
         )).thenReturn(Optional.of(cancelledBooking));
 
         Optional<Booking> result =
@@ -425,10 +421,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository)
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CANCELLED
-                );
+                .update(pendingBooking);
     }
 
     @Test
@@ -436,7 +429,7 @@ class BookingServiceTest {
         Long bookingId = 7L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking confirmedBooking = new Booking(
+        Booking confirmedBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -445,7 +438,7 @@ class BookingServiceTest {
                 BookingStatus.CONFIRMED
         );
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -457,9 +450,8 @@ class BookingServiceTest {
         when(bookingRepository.findById(bookingId))
                 .thenReturn(Optional.of(confirmedBooking));
 
-        when(bookingRepository.updateStatus(
-                bookingId,
-                BookingStatus.CANCELLED
+        when(bookingRepository.update(
+                confirmedBooking
         )).thenReturn(Optional.of(cancelledBooking));
 
         Optional<Booking> result =
@@ -472,10 +464,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository)
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CANCELLED
-                );
+                .update(confirmedBooking);
     }
 
     @Test
@@ -501,7 +490,7 @@ class BookingServiceTest {
                 true
         );
 
-        Booking savedBooking = new Booking(
+        Booking savedBooking = Booking.restore(
                 10L,
                 userId,
                 serviceId,
@@ -565,7 +554,7 @@ class BookingServiceTest {
         Long bookingId = 8L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking pendingBooking = new Booking(
+        Booking pendingBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -574,7 +563,7 @@ class BookingServiceTest {
                 BookingStatus.PENDING
         );
 
-        Booking confirmedBooking = new Booking(
+        Booking confirmedBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -586,9 +575,8 @@ class BookingServiceTest {
         when(bookingRepository.findById(bookingId))
                 .thenReturn(Optional.of(pendingBooking));
 
-        when(bookingRepository.updateStatus(
-                bookingId,
-                BookingStatus.CONFIRMED
+        when(bookingRepository.update(
+                pendingBooking
         )).thenReturn(Optional.of(confirmedBooking));
 
         Optional<Booking> result =
@@ -604,10 +592,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository)
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CONFIRMED
-                );
+                .update(pendingBooking);
     }
 
     @Test
@@ -615,7 +600,7 @@ class BookingServiceTest {
         Long bookingId = 9L;
         LocalDateTime startTime = futureStartTime();
 
-        Booking cancelledBooking = new Booking(
+        Booking cancelledBooking = Booking.restore(
                 bookingId,
                 1L,
                 2L,
@@ -641,10 +626,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository, never())
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CONFIRMED
-                );
+                .update(any(Booking.class));
     }
 
     @Test
@@ -957,7 +939,7 @@ class BookingServiceTest {
         LocalDateTime startTime =
                 LocalDateTime.of(2030, 1, 15, 10, 0);
 
-        Booking booking = new Booking(
+        Booking booking = Booking.restore(
                 1L,
                 1L,
                 2L,
@@ -1027,7 +1009,7 @@ class BookingServiceTest {
                         0
                 );
 
-        return new Booking(
+        return Booking.restore(
                 bookingId,
                 7L,
                 20L,
