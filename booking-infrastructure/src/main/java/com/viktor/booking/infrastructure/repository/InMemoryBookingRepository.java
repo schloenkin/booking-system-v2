@@ -198,13 +198,14 @@ public class InMemoryBookingRepository implements BookingRepository {
 
                 Booking updatedBooking =
                         Booking.restore(
-                                booking.getId(),
-                                booking.getUserId(),
-                                booking.getServiceId(),
-                                booking.getStartTime(),
-                                booking.getEndTime(),
+                                existingBooking.getId(),
+                                existingBooking.getUserId(),
+                                existingBooking.getServiceId(),
+                                existingBooking.getStartTime(),
+                                existingBooking.getEndTime(),
                                 booking.getStatus()
                         );
+
 
                 bookings.set(
                         index,
