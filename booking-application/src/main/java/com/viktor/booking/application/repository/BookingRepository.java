@@ -32,10 +32,10 @@ public interface BookingRepository {
 
     Booking save(Booking booking);
 
-    Optional<Booking> updateStatus(
-            Long id,
-            BookingStatus status
+    Optional<Booking> update(
+            Booking booking
     );
+
 
     void deleteById(Long id);
 }

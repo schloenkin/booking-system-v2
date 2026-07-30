@@ -242,10 +242,8 @@ class BookingStatusConcurrencyIntegrationTest {
                             booking.cancel();
                         }
 
-                        bookingRepository.updateStatus(
-                                bookingId,
-                                booking.getStatus()
-                        ).orElseThrow();
+                        bookingRepository.update(booking)
+                                .orElseThrow();
                     }
             );
 

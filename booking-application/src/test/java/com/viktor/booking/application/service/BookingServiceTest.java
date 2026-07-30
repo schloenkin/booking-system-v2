@@ -39,6 +39,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import java.util.Optional;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
@@ -377,12 +378,8 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository, never())
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CANCELLED
-                );
+                .update(any(Booking.class));
     }
-
 
     @Test
     void shouldCancelPendingBooking() {
@@ -410,9 +407,8 @@ class BookingServiceTest {
         when(bookingRepository.findById(bookingId))
                 .thenReturn(Optional.of(pendingBooking));
 
-        when(bookingRepository.updateStatus(
-                bookingId,
-                BookingStatus.CANCELLED
+        when(bookingRepository.update(
+                pendingBooking
         )).thenReturn(Optional.of(cancelledBooking));
 
         Optional<Booking> result =
@@ -425,10 +421,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository)
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CANCELLED
-                );
+                .update(pendingBooking);
     }
 
     @Test
@@ -457,9 +450,8 @@ class BookingServiceTest {
         when(bookingRepository.findById(bookingId))
                 .thenReturn(Optional.of(confirmedBooking));
 
-        when(bookingRepository.updateStatus(
-                bookingId,
-                BookingStatus.CANCELLED
+        when(bookingRepository.update(
+                confirmedBooking
         )).thenReturn(Optional.of(cancelledBooking));
 
         Optional<Booking> result =
@@ -472,10 +464,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository)
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CANCELLED
-                );
+                .update(confirmedBooking);
     }
 
     @Test
@@ -586,9 +575,8 @@ class BookingServiceTest {
         when(bookingRepository.findById(bookingId))
                 .thenReturn(Optional.of(pendingBooking));
 
-        when(bookingRepository.updateStatus(
-                bookingId,
-                BookingStatus.CONFIRMED
+        when(bookingRepository.update(
+                pendingBooking
         )).thenReturn(Optional.of(confirmedBooking));
 
         Optional<Booking> result =
@@ -604,10 +592,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository)
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CONFIRMED
-                );
+                .update(pendingBooking);
     }
 
     @Test
@@ -641,10 +626,7 @@ class BookingServiceTest {
                 .findById(bookingId);
 
         verify(bookingRepository, never())
-                .updateStatus(
-                        bookingId,
-                        BookingStatus.CONFIRMED
-                );
+                .update(any(Booking.class));
     }
 
     @Test

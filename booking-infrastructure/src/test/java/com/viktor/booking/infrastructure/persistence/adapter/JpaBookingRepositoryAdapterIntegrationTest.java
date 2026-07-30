@@ -159,11 +159,10 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         entityManager.flush();
         entityManager.clear();
 
+        savedBooking.cancel();
+
         Booking updatedBooking = bookingRepositoryAdapter
-                .updateStatus(
-                        savedBooking.getId(),
-                        BookingStatus.CANCELLED
-                )
+                .update(savedBooking)
                 .orElseThrow();
 
         assertThat(updatedBooking.getStatus())

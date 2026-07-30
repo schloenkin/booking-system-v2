@@ -176,19 +176,28 @@ public class JpaBookingRepositoryAdapter implements BookingRepository {
     }
 
     @Override
-    public Optional<Booking> updateStatus(
-            Long id,
-            BookingStatus status
+    public Optional<Booking> update(
+            Booking booking
     ) {
+        if (booking.getId() == null) {
+            throw new IllegalArgumentException(
+                    "Booking id must not be null for update"
+            );
+        }
+
         return bookingJpaRepository
-                .findById(id)
+                .findById(booking.getId())
                 .map(entity -> {
-                    entity.setStatus(status);
+                    entity.setStatus(
+                            booking.getStatus()
+                    );
 
                     BookingEntity savedEntity =
                             bookingJpaRepository.save(entity);
 
-                    return bookingMapper.toDomain(savedEntity);
+                    return bookingMapper.toDomain(
+                            savedEntity
+                    );
                 });
     }
 

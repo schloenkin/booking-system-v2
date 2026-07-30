@@ -203,9 +203,8 @@ public class BookingService {
 
         existingBooking.cancel();
 
-        return bookingRepository.updateStatus(
-                id,
-                existingBooking.getStatus()
+        return bookingRepository.update(
+                existingBooking
         );
     }
 
@@ -222,10 +221,10 @@ public class BookingService {
 
         existingBooking.confirm();
 
-        return bookingRepository.updateStatus(
-                id,
-                existingBooking.getStatus()
+        return bookingRepository.update(
+                existingBooking
         );
+
     }
 
 }
