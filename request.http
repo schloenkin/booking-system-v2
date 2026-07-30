@@ -1,9 +1,139 @@
-POST http://localhost:8080/api/bookings
+@baseUrl = http://localhost:8080
+@adminEmail = admin@example.com
+@adminPassword = AdminPass123!
+@userEmail = user@example.com
+@userPassword = UserPass123!
+
+### Health check
+
+GET {{baseUrl}}/api/health
+
+
+### Register future admin
+# Registration always creates a USER.
+# After this request, promote the account in the local database:
+#
+# UPDATE users
+# SET role = 'ADMIN'
+# WHERE email = 'admin@example.com';
+
+POST {{baseUrl}}/api/auth/register
 Content-Type: application/json
 
 {
-  "userId": 1,
-  "serviceId": 1,
-  "startTime": "2026-06-25T14:00:00",
-  "endTime": "2026-06-25T14:30:00"
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
 }
+
+
+### Login as admin after database promotion
+# A new login is required because the original JWT still contains ROLE_USER.
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+    client.global.set(
+        "adminToken",
+        response.body.accessToken
+    );
+%}
+
+
+### Create a bookable service — ADMIN only
+
+POST {{baseUrl}}/api/services
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Backend consultation",
+  "description": "One-hour backend architecture consultation",
+  "durationMinutes": 60
+}
+
+> {%
+    client.global.set(
+        "serviceId",
+        response.body.id
+    );
+%}
+
+
+### Get all services — public
+
+GET {{baseUrl}}/api/services
+
+
+### Register a regular user
+
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+> {%
+    client.global.set(
+        "userToken",
+        response.body.accessToken
+    );
+%}
+
+
+### Create a booking as the authenticated user
+
+POST {{baseUrl}}/api/bookings
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "serviceId": {{serviceId}},
+  "startTime": "2026-08-10T10:00:00",
+  "endTime": "2026-08-10T11:00:00"
+}
+
+> {%
+    client.global.set(
+        "bookingId",
+        response.body.id
+    );
+%}
+
+
+### Search own bookings
+# A regular user can see only their own bookings.
+
+GET {{baseUrl}}/api/bookings?page=0&size=20&sortBy=startTime&direction=asc
+Authorization: Bearer {{userToken}}
+
+
+### Get booking by ID
+
+GET {{baseUrl}}/api/bookings/{{bookingId}}
+Authorization: Bearer {{userToken}}
+
+
+### Confirm booking — ADMIN only
+
+PUT {{baseUrl}}/api/bookings/{{bookingId}}/confirm
+Authorization: Bearer {{adminToken}}
+
+
+### Cancel own booking
+
+PUT {{baseUrl}}/api/bookings/{{bookingId}}/cancel
+Authorization: Bearer {{userToken}}
+
+
+### Delete cancelled booking — ADMIN only
+
+DELETE {{baseUrl}}/api/bookings/{{bookingId}}
+Authorization: Bearer {{adminToken}}

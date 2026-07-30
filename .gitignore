@@ -41,3 +41,9 @@ build/
 
 ### Local environment variables ###
 .env
+
+### IntelliJ database tools ###
+.idea/dataSources.xml
+.idea/dataSources.local.xml
+.idea/data_source_mapping.xml
+.idea/dataSources/
