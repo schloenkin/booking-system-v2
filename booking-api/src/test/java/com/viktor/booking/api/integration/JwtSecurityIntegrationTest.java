@@ -1,22 +1,18 @@
 package com.viktor.booking.api.integration;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-
-import javax.crypto.SecretKey;
-import java.time.Instant;
-import java.util.Date;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viktor.booking.api.BookingApiApplication;
+import com.viktor.booking.application.repository.BookableServiceRepository;
 import com.viktor.booking.application.repository.UserRepository;
 import com.viktor.booking.application.security.PasswordHasher;
 import com.viktor.booking.domain.enums.UserRole;
-import com.viktor.booking.domain.model.User;
-import com.viktor.booking.application.repository.BookableServiceRepository;
 import com.viktor.booking.domain.model.BookableService;
+import com.viktor.booking.domain.model.User;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,23 +20,22 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.junit.jupiter.api.BeforeEach;
-import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
 import java.util.Map;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(
         classes = BookingApiApplication.class,
@@ -660,6 +655,217 @@ class JwtSecurityIntegrationTest {
                 .andExpect(
                         status().isNotFound()
                 );
+    }
+
+    @Test
+    void shouldReturnUnifiedSecurityErrorResponses()
+            throws Exception {
+
+        assertSecurityErrorContract(
+                mockMvc.perform(
+                        get("/api/bookings")
+                ),
+                401,
+                "Unauthorized",
+                "AUTHENTICATION_REQUIRED",
+                "Authentication is required to access this resource",
+                "/api/bookings"
+        );
+
+        assertSecurityErrorContract(
+                mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        "Bearer malformed-token"
+                                )
+                ),
+                401,
+                "Unauthorized",
+                "AUTHENTICATION_REQUIRED",
+                "Authentication is required to access this resource",
+                "/api/bookings"
+        );
+
+        RegisteredUser user =
+                registerUserAndExtractIdentity(
+                        USER_ONE_EMAIL,
+                        USER_ONE_PASSWORD
+                );
+
+        String requestBody =
+                createServiceRequestBody(
+                        "Forbidden security contract service"
+                );
+
+        assertSecurityErrorContract(
+                mockMvc.perform(
+                        post("/api/services")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(
+                                                user.accessToken()
+                                        )
+                                )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                ),
+                403,
+                "Forbidden",
+                "ACCESS_DENIED",
+                "Access is denied",
+                "/api/services"
+        );
+    }
+
+    @Test
+    void shouldReturnUnifiedValidationError()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "email": "validation@example.com"
+                                        }
+                                        """
+                                )
+                );
+
+        assertApiErrorContract(
+                result,
+                400,
+                "Bad Request",
+                "VALIDATION_FAILED",
+                "/api/auth/register"
+        );
+
+        result
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Request validation failed"
+                                )
+                )
+                .andExpect(
+                        jsonPath("$.violations.length()")
+                                .value(1)
+                )
+                .andExpect(
+                        jsonPath("$.violations[0].field")
+                                .value("password")
+                )
+                .andExpect(
+                        jsonPath("$.violations[0].message")
+                                .value(
+                                        "Password must not be blank"
+                                )
+                );
+    }
+
+    @Test
+    void shouldReturnUnifiedMalformedJsonError()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "email": "broken@example.com"
+                                        """
+                                )
+                );
+
+        assertApiErrorContract(
+                result,
+                400,
+                "Bad Request",
+                "MALFORMED_REQUEST",
+                "/api/auth/register"
+        );
+
+        result.andExpect(
+                jsonPath("$.message")
+                        .value(
+                                "Request body contains malformed JSON"
+                        )
+        );
+    }
+
+    @Test
+    void shouldReturnUnifiedErrorForMissingService()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                        get(
+                                "/api/services/{id}",
+                                999999L
+                        )
+                );
+
+        assertApiErrorContract(
+                result,
+                404,
+                "Not Found",
+                "SERVICE_NOT_FOUND",
+                "/api/services/999999"
+        );
+    }
+
+    @Test
+    void shouldReturnUnifiedErrorForDuplicateRegistration()
+            throws Exception {
+
+        String email =
+                "duplicate-contract@example.com";
+
+        String password =
+                "DuplicatePassword123!";
+
+        registerUserAndExtractIdentity(
+                email,
+                password
+        );
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                email,
+                                "password",
+                                password
+                        )
+                );
+
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                );
+
+        assertApiErrorContract(
+                result,
+                409,
+                "Conflict",
+                "USER_ALREADY_EXISTS",
+                "/api/auth/register"
+        );
     }
 
     private RegisteredUser registerUserAndExtractIdentity(
@@ -1316,6 +1522,105 @@ class JwtSecurityIntegrationTest {
                 .andExpect(
                         jsonPath("$.status")
                                 .value(expectedStatus)
+                );
+    }
+
+    private void assertSecurityErrorContract(
+            ResultActions result,
+            int expectedStatus,
+            String expectedError,
+            String expectedCode,
+            String expectedMessage,
+            String expectedPath
+    ) throws Exception {
+
+        result
+                .andExpect(
+                        status().is(expectedStatus)
+                )
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.timestamp")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(expectedStatus)
+                )
+                .andExpect(
+                        jsonPath("$.error")
+                                .value(expectedError)
+                )
+                .andExpect(
+                        jsonPath("$.code")
+                                .value(expectedCode)
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(expectedMessage)
+                )
+                .andExpect(
+                        jsonPath("$.path")
+                                .value(expectedPath)
+                )
+                .andExpect(
+                        jsonPath("$.violations")
+                                .isArray()
+                )
+                .andExpect(
+                        jsonPath("$.violations.length()")
+                                .value(0)
+                );
+    }
+
+    private void assertApiErrorContract(
+            ResultActions result,
+            int expectedStatus,
+            String expectedError,
+            String expectedCode,
+            String expectedPath
+    ) throws Exception {
+
+        result
+                .andExpect(
+                        status().is(expectedStatus)
+                )
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.timestamp")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(expectedStatus)
+                )
+                .andExpect(
+                        jsonPath("$.error")
+                                .value(expectedError)
+                )
+                .andExpect(
+                        jsonPath("$.code")
+                                .value(expectedCode)
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.path")
+                                .value(expectedPath)
+                )
+                .andExpect(
+                        jsonPath("$.violations")
+                                .isArray()
                 );
     }
     private String bearer(

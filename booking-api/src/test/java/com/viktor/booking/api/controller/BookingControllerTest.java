@@ -622,10 +622,21 @@ class BookingControllerTest {
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(
+                        jsonPath("$.code")
+                                .value("VALIDATION_FAILED")
+                )
+                .andExpect(
                         jsonPath("$.message")
-                                .value(
+                                .value("Request validation failed")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.violations[?(@.field == 'serviceId')].message"
+                        ).value(
+                                org.hamcrest.Matchers.hasItem(
                                         "Service id must not be null"
                                 )
+                        )
                 );
     }
 

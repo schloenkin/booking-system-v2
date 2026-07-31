@@ -1,7 +1,7 @@
 package com.viktor.booking.api.security;
 
 import com.viktor.booking.application.security.TokenService;
-import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,13 +18,19 @@ public class SecurityConfig {
 
     private final TokenService tokenService;
     private final CustomUserDetailsService userDetailsService;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
     public SecurityConfig(
             TokenService tokenService,
-            CustomUserDetailsService userDetailsService
+            CustomUserDetailsService userDetailsService,
+            RestAuthenticationEntryPoint authenticationEntryPoint,
+            RestAccessDeniedHandler accessDeniedHandler
     ) {
         this.tokenService = tokenService;
         this.userDetailsService = userDetailsService;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
@@ -53,24 +59,10 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions ->
                         exceptions
                                 .authenticationEntryPoint(
-                                        (
-                                                request,
-                                                response,
-                                                exception
-                                        ) -> response.sendError(
-                                                HttpServletResponse
-                                                        .SC_UNAUTHORIZED
-                                        )
+                                        authenticationEntryPoint
                                 )
                                 .accessDeniedHandler(
-                                        (
-                                                request,
-                                                response,
-                                                exception
-                                        ) -> response.sendError(
-                                                HttpServletResponse
-                                                        .SC_FORBIDDEN
-                                        )
+                                        accessDeniedHandler
                                 )
                 )
 
