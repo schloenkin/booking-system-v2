@@ -545,6 +545,123 @@ class JwtSecurityIntegrationTest {
         );
     }
 
+    @Test
+    void shouldAllowAdminToCancelAndDeleteBookings()
+            throws Exception {
+
+        RegisteredUser user =
+                registerUserAndExtractIdentity(
+                        OPERATION_USER_EMAIL,
+                        OPERATION_USER_PASSWORD
+                );
+
+        createAdmin();
+
+        String adminToken =
+                loginAdminAndExtractToken();
+
+        Long serviceId =
+                createServiceAndExtractId(
+                        adminToken
+                );
+
+        Long cancellationBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        serviceId,
+                        "2031-03-10T10:00:00",
+                        "2031-03-10T11:00:00"
+                );
+
+        Long deletionBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        serviceId,
+                        "2031-03-10T12:00:00",
+                        "2031-03-10T13:00:00"
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                cancellationBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(cancellationBookingId)
+                )
+                .andExpect(
+                        jsonPath("$.userId")
+                                .value(user.userId())
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(deletionBookingId)
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
+
+        mockMvc.perform(
+                        delete(
+                                "/api/bookings/{id}",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isNoContent()
+                );
+
+        mockMvc.perform(
+                        get(
+                                "/api/bookings/{id}",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isNotFound()
+                );
+    }
+
     private RegisteredUser registerUserAndExtractIdentity(
             String email,
             String password
