@@ -80,7 +80,7 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         Long serviceId = service.getId();
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 5, 10, 0);
+                LocalDateTime.of(2035, 8, 5, 10, 0);
 
         LocalDateTime endTime =
                 startTime.plusMinutes(60);
@@ -144,7 +144,7 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 6, 10, 0);
+                LocalDateTime.of(2035, 8, 6, 10, 0);
 
         Booking bookingToSave = Booking.create(
                 user.getId(),
@@ -191,7 +191,7 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 7, 10, 0);
+                LocalDateTime.of(2035, 8, 7, 10, 0);
 
         Booking booking = Booking.create(
                 999999L,
@@ -218,7 +218,7 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 8, 10, 0);
+                LocalDateTime.of(2035, 8, 8, 10, 0);
 
         Booking booking = Booking.create(
                 user.getId(),
@@ -256,7 +256,7 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 9, 10, 0);
+                LocalDateTime.of(2035, 8, 9, 10, 0);
 
         Booking pendingBooking = Booking.create(
                 user.getId(),
@@ -317,7 +317,7 @@ class JpaBookingRepositoryAdapterIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 10, 10, 0);
+                LocalDateTime.of(2035, 8, 10, 10, 0);
 
         Booking booking = Booking.create(
                 user.getId(),

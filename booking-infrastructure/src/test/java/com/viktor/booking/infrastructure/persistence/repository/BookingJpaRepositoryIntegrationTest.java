@@ -63,7 +63,7 @@ class BookingJpaRepositoryIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 1, 10, 0);
+                LocalDateTime.of(2035, 8, 1, 10, 0);
 
         LocalDateTime endTime =
                 startTime.plusMinutes(60);
@@ -132,7 +132,7 @@ class BookingJpaRepositoryIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 2, 10, 0);
+                LocalDateTime.of(2035, 8, 2, 10, 0);
 
         BookingEntity pendingBooking = new BookingEntity(
                 user,
@@ -188,7 +188,7 @@ class BookingJpaRepositoryIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 3, 10, 0);
+                LocalDateTime.of(2035, 8, 3, 10, 0);
 
         BookingEntity booking = new BookingEntity(
                 user,
@@ -243,7 +243,7 @@ class BookingJpaRepositoryIntegrationTest {
         );
 
         LocalDateTime startTime =
-                LocalDateTime.of(2026, 8, 4, 10, 0);
+                LocalDateTime.of(2035, 8, 4, 10, 0);
 
         BookingEntity booking = new BookingEntity(
                 user,
