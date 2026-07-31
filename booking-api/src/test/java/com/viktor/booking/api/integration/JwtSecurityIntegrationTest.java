@@ -1183,6 +1183,36 @@ class JwtSecurityIntegrationTest {
                 .andExpect(
                         jsonPath("$.components.schemas.BookingResponse")
                                 .exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['content']['items']['$ref']"
+                        ).value("#/components/schemas/BookingResponse")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['page']['minimum']"
+                        ).value(0)
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['size']['minimum']"
+                        ).value(1)
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['totalElements']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['totalPages']"
+                        ).exists()
                 );
     }
 
