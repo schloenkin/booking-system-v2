@@ -1213,6 +1213,61 @@ class JwtSecurityIntegrationTest {
                                 "$['components']['schemas']['PageResponse']" +
                                         "['properties']['totalPages']"
                         ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/health']['get']['summary']"
+                        ).value("Check API health")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/health']['get']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/health']['get']['security']"
+                        ).doesNotExist()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['summary']"
+                        ).value("Get a user")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['401']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['403']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.UserResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['UserResponse']" +
+                                        "['properties']['role']['enum']"
+                        ).isArray()
                 );
     }
 
