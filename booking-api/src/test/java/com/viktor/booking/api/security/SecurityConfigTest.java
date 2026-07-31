@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -220,7 +221,12 @@ class SecurityConfigTest {
 
     @Configuration
     @EnableWebMvc
-    @Import(SecurityConfig.class)
+    @Import({
+            SecurityConfig.class,
+            SecurityErrorResponseWriter.class,
+            RestAuthenticationEntryPoint.class,
+            RestAccessDeniedHandler.class
+    })
     static class TestConfiguration {
 
         @Bean
@@ -238,6 +244,12 @@ class SecurityConfigTest {
         @Bean
         TestController testController() {
             return new TestController();
+        }
+
+        @Bean
+        ObjectMapper objectMapper() {
+            return new ObjectMapper()
+                    .findAndRegisterModules();
         }
     }
 
