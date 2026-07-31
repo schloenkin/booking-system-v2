@@ -36,6 +36,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 @SpringBootTest(
         classes = BookingApiApplication.class,
@@ -866,6 +867,426 @@ class JwtSecurityIntegrationTest {
                 "USER_ALREADY_EXISTS",
                 "/api/auth/register"
         );
+    }
+
+    @Test
+    void shouldExposeOpenApiDocumentationWithoutAuthentication()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/v3/api-docs")
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.openapi")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.info")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.paths")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.info.title")
+                                .value("Booking System API")
+                )
+                .andExpect(
+                        jsonPath("$.info.description")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.info.version")
+                                .value("1.0.0")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.components.securitySchemes.bearerAuth.type"
+                        ).value("http")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.components.securitySchemes.bearerAuth.scheme"
+                        ).value("bearer")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.components.securitySchemes.bearerAuth.bearerFormat"
+                        ).value("JWT")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['summary']"
+                        ).value("Register a new user")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['responses']['201']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['responses']['400']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['responses']['409']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/login']['post']['summary']"
+                        ).value("Authenticate an existing user")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/login']['post']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/login']['post']['responses']['401']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.RegisterRequest")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.LoginRequest")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.AuthResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.ErrorResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.ValidationViolation")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['get']['summary']"
+                        ).value("List all bookable services")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['get']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['get']['security']"
+                        ).doesNotExist()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['post']['summary']"
+                        ).value("Create a bookable service")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['post']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['post']['responses']['201']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['post']['responses']['400']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['post']['responses']['401']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services']['post']['responses']['403']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services/{id}']['get']['summary']"
+                        ).value("Get a bookable service")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services/{id}']['get']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services/{id}/activate']['put']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/services/{id}/deactivate']['put']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.BookableServiceCreateRequest")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.BookableServiceResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['get']['summary']"
+                        ).value("Search bookings")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['get']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['get']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['get']['responses']['400']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['get']['responses']['401']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['post']['summary']"
+                        ).value("Create a booking")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['post']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['post']['responses']['201']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['post']['responses']['400']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['post']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings']['post']['responses']['409']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}']['get']['summary']"
+                        ).value("Get a booking")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}']['get']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}']['delete']['summary']"
+                        ).value("Delete a booking")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}']['delete']['responses']['204']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}']['delete']['responses']['403']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}']['delete']['responses']['409']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/cancel']['put']['summary']"
+                        ).value("Cancel a booking")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/cancel']['put']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/cancel']['put']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/cancel']['put']['responses']['409']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/confirm']['put']['summary']"
+                        ).value("Confirm a booking")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/confirm']['put']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/confirm']['put']['responses']['403']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/confirm']['put']['responses']['409']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.BookingCreateRequest")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.BookingResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['content']['items']['$ref']"
+                        ).value("#/components/schemas/BookingResponse")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['page']['minimum']"
+                        ).value(0)
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['size']['minimum']"
+                        ).value(1)
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['totalElements']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['PageResponse']" +
+                                        "['properties']['totalPages']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/health']['get']['summary']"
+                        ).value("Check API health")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/health']['get']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/health']['get']['security']"
+                        ).doesNotExist()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['summary']"
+                        ).value("Get a user")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['401']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['403']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/users/{id}']['get']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.UserResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['components']['schemas']['UserResponse']" +
+                                        "['properties']['role']['enum']"
+                        ).isArray()
+                );
+    }
+
+    @Test
+    void shouldExposeSwaggerUiWithoutAuthentication()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/swagger-ui.html")
+                )
+                .andExpect(
+                        status().is3xxRedirection()
+                )
+                .andExpect(
+                        redirectedUrl(
+                                "/swagger-ui/index.html"
+                        )
+                );
+
     }
 
     private RegisteredUser registerUserAndExtractIdentity(
