@@ -185,9 +185,20 @@ class AuthControllerTest {
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(
-                        jsonPath("$.message").value(
-                                "Password must contain "
-                                        + "between 8 and 72 characters"
+                        jsonPath("$.code")
+                                .value("VALIDATION_FAILED")
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Request validation failed")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.violations[?(@.field == 'password')].message"
+                        ).value(
+                                org.hamcrest.Matchers.hasItem(
+                                        "Password must contain between 8 and 72 characters"
+                                )
                         )
                 );
     }
