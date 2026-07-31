@@ -15,6 +15,8 @@ import com.viktor.booking.application.repository.UserRepository;
 import com.viktor.booking.application.security.PasswordHasher;
 import com.viktor.booking.domain.enums.UserRole;
 import com.viktor.booking.domain.model.User;
+import com.viktor.booking.application.repository.BookableServiceRepository;
+import com.viktor.booking.domain.model.BookableService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,6 +29,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -80,6 +84,12 @@ class JwtSecurityIntegrationTest {
     private static final String INVALID_PASSWORD_USER_PASSWORD =
             "ValidPassword123!";
 
+    private static final String OPERATION_USER_EMAIL =
+            "integration-operation-user@example.com";
+
+    private static final String OPERATION_USER_PASSWORD =
+            "OperationUserPassword123!";
+
     private static final String APPLICATION_JWT_SECRET =
             "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
 
@@ -104,6 +114,25 @@ class JwtSecurityIntegrationTest {
 
     @Autowired
     private PasswordHasher passwordHasher;
+
+    @Autowired
+    private BookableServiceRepository serviceRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanDatabase() {
+        jdbcTemplate.execute(
+                """
+                TRUNCATE TABLE
+                    bookings,
+                    bookable_services,
+                    users
+                RESTART IDENTITY CASCADE
+                """
+        );
+    }
 
     @Test
     void shouldLoginRegisteredUser()
@@ -395,6 +424,124 @@ class JwtSecurityIntegrationTest {
 
         verifyRemovedUserCreationEndpointReturns404(
                 adminToken
+        );
+    }
+
+    @Test
+    void shouldEnforceUserBookingOperationPermissions()
+            throws Exception {
+
+        RegisteredUser user =
+                registerUserAndExtractIdentity(
+                        OPERATION_USER_EMAIL,
+                        OPERATION_USER_PASSWORD
+                );
+
+        BookableService savedService =
+                serviceRepository.save(
+                        new BookableService(
+                                null,
+                                "User operation integration service",
+                                "Service for USER operation tests",
+                                60,
+                                true
+                        )
+                );
+
+        Long cancellationBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        savedService.getId(),
+                        "2031-02-10T10:00:00",
+                        "2031-02-10T11:00:00"
+                );
+
+        Long confirmationBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        savedService.getId(),
+                        "2031-02-10T12:00:00",
+                        "2031-02-10T13:00:00"
+                );
+
+        Long deletionBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        savedService.getId(),
+                        "2031-02-10T14:00:00",
+                        "2031-02-10T15:00:00"
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                cancellationBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(user.accessToken())
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(cancellationBookingId)
+                )
+                .andExpect(
+                        jsonPath("$.userId")
+                                .value(user.userId())
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/confirm",
+                                confirmationBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(user.accessToken())
+                                )
+                )
+                .andExpect(
+                        status().isForbidden()
+                );
+
+        verifyBookingStatus(
+                user.accessToken(),
+                confirmationBookingId,
+                "PENDING"
+        );
+
+        mockMvc.perform(
+                        delete(
+                                "/api/bookings/{id}",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(user.accessToken())
+                                )
+                )
+                .andExpect(
+                        status().isForbidden()
+                );
+
+        verifyBookingStatus(
+                user.accessToken(),
+                deletionBookingId,
+                "PENDING"
         );
     }
 
@@ -1024,6 +1171,35 @@ class JwtSecurityIntegrationTest {
                 )
                 .signWith(signingKey)
                 .compact();
+    }
+
+    private void verifyBookingStatus(
+            String accessToken,
+            Long bookingId,
+            String expectedStatus
+    ) throws Exception {
+
+        mockMvc.perform(
+                        get(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(accessToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(bookingId)
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(expectedStatus)
+                );
     }
     private String bearer(
             String token
