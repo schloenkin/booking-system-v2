@@ -720,6 +720,154 @@ class JwtSecurityIntegrationTest {
         );
     }
 
+    @Test
+    void shouldReturnUnifiedValidationError()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "email": "validation@example.com"
+                                        }
+                                        """
+                                )
+                );
+
+        assertApiErrorContract(
+                result,
+                400,
+                "Bad Request",
+                "VALIDATION_FAILED",
+                "/api/auth/register"
+        );
+
+        result
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Request validation failed"
+                                )
+                )
+                .andExpect(
+                        jsonPath("$.violations.length()")
+                                .value(1)
+                )
+                .andExpect(
+                        jsonPath("$.violations[0].field")
+                                .value("password")
+                )
+                .andExpect(
+                        jsonPath("$.violations[0].message")
+                                .value(
+                                        "Password must not be blank"
+                                )
+                );
+    }
+
+    @Test
+    void shouldReturnUnifiedMalformedJsonError()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "email": "broken@example.com"
+                                        """
+                                )
+                );
+
+        assertApiErrorContract(
+                result,
+                400,
+                "Bad Request",
+                "MALFORMED_REQUEST",
+                "/api/auth/register"
+        );
+
+        result.andExpect(
+                jsonPath("$.message")
+                        .value(
+                                "Request body contains malformed JSON"
+                        )
+        );
+    }
+
+    @Test
+    void shouldReturnUnifiedErrorForMissingService()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                        get(
+                                "/api/services/{id}",
+                                999999L
+                        )
+                );
+
+        assertApiErrorContract(
+                result,
+                404,
+                "Not Found",
+                "SERVICE_NOT_FOUND",
+                "/api/services/999999"
+        );
+    }
+
+    @Test
+    void shouldReturnUnifiedErrorForDuplicateRegistration()
+            throws Exception {
+
+        String email =
+                "duplicate-contract@example.com";
+
+        String password =
+                "DuplicatePassword123!";
+
+        registerUserAndExtractIdentity(
+                email,
+                password
+        );
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                email,
+                                "password",
+                                password
+                        )
+                );
+
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                );
+
+        assertApiErrorContract(
+                result,
+                409,
+                "Conflict",
+                "USER_ALREADY_EXISTS",
+                "/api/auth/register"
+        );
+    }
+
     private RegisteredUser registerUserAndExtractIdentity(
             String email,
             String password
@@ -1426,6 +1574,53 @@ class JwtSecurityIntegrationTest {
                 .andExpect(
                         jsonPath("$.violations.length()")
                                 .value(0)
+                );
+    }
+
+    private void assertApiErrorContract(
+            ResultActions result,
+            int expectedStatus,
+            String expectedError,
+            String expectedCode,
+            String expectedPath
+    ) throws Exception {
+
+        result
+                .andExpect(
+                        status().is(expectedStatus)
+                )
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.timestamp")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(expectedStatus)
+                )
+                .andExpect(
+                        jsonPath("$.error")
+                                .value(expectedError)
+                )
+                .andExpect(
+                        jsonPath("$.code")
+                                .value(expectedCode)
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.path")
+                                .value(expectedPath)
+                )
+                .andExpect(
+                        jsonPath("$.violations")
+                                .isArray()
                 );
     }
     private String bearer(

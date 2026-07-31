@@ -286,6 +286,43 @@ class GlobalExceptionHandlerTest {
         );
     }
 
+    @Test
+    void shouldReturnUnifiedErrorForMalformedJson()
+            throws Exception {
+
+        ResultActions result =
+                mockMvc.perform(
+                                post("/test/validation")
+                                        .contentType(
+                                                MediaType.APPLICATION_JSON
+                                        )
+                                        .content(
+                                                """
+                                                {
+                                                  "email": "test@example.com"
+                                                """
+                                        )
+                        )
+                        .andExpect(
+                                status().isBadRequest()
+                        );
+
+        assertErrorContract(
+                result,
+                400,
+                "Bad Request",
+                "MALFORMED_REQUEST",
+                "/test/validation"
+        );
+
+        result.andExpect(
+                jsonPath("$.message")
+                        .value(
+                                "Request body contains malformed JSON"
+                        )
+        );
+    }
+
     private void assertErrorContract(
             ResultActions result,
             int expectedStatus,

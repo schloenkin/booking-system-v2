@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -316,6 +317,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT,
                 ApiErrorCode.USER_ALREADY_EXISTS,
                 exception.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMalformedRequest(
+            HttpMessageNotReadableException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ApiErrorCode.MALFORMED_REQUEST,
+                "Request body contains malformed JSON",
                 request
         );
     }
