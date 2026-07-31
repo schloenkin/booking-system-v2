@@ -60,6 +60,18 @@ class JwtSecurityIntegrationTest {
     private static final String ADMIN_PASSWORD =
             "AdminPassword123!";
 
+    private static final String LOGIN_USER_EMAIL =
+            "integration-login-user@example.com";
+
+    private static final String LOGIN_USER_PASSWORD =
+            "LoginUserPassword123!";
+
+    private static final String INVALID_PASSWORD_USER_EMAIL =
+            "integration-invalid-password@example.com";
+
+    private static final String INVALID_PASSWORD_USER_PASSWORD =
+            "ValidPassword123!";
+
     @Container
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES =
@@ -78,6 +90,142 @@ class JwtSecurityIntegrationTest {
 
     @Autowired
     private PasswordHasher passwordHasher;
+
+    @Test
+    void shouldLoginRegisteredUser()
+            throws Exception {
+
+        registerUserAndExtractIdentity(
+                LOGIN_USER_EMAIL,
+                LOGIN_USER_PASSWORD
+        );
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                LOGIN_USER_EMAIL,
+                                "password",
+                                LOGIN_USER_PASSWORD
+                        )
+                );
+
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/login")
+                                        .contentType(
+                                                MediaType.APPLICATION_JSON
+                                        )
+                                        .content(requestBody)
+                        )
+                        .andExpect(
+                                status().isOk()
+                        )
+                        .andExpect(
+                                jsonPath("$.accessToken")
+                                        .isNotEmpty()
+                        )
+                        .andExpect(
+                                jsonPath("$.tokenType")
+                                        .value("Bearer")
+                        )
+                        .andExpect(
+                                jsonPath("$.user.email")
+                                        .value(LOGIN_USER_EMAIL)
+                        )
+                        .andExpect(
+                                jsonPath("$.user.role")
+                                        .value("USER")
+                        )
+                        .andReturn();
+
+        String accessToken =
+                extractAccessToken(result);
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(accessToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForIncorrectPassword()
+            throws Exception {
+
+        registerUserAndExtractIdentity(
+                INVALID_PASSWORD_USER_EMAIL,
+                INVALID_PASSWORD_USER_PASSWORD
+        );
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                INVALID_PASSWORD_USER_EMAIL,
+                                "password",
+                                "IncorrectPassword123!"
+                        )
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForUnknownEmail()
+            throws Exception {
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                "unknown-integration-user@example.com",
+                                "password",
+                                "UnknownPassword123!"
+                        )
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForMalformedJwt()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        "Bearer definitely-not-a-valid-jwt"
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
 
     @Test
     void shouldCompleteFullJwtSecurityAndBookingOwnershipFlow()
