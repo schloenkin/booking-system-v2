@@ -36,6 +36,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 @SpringBootTest(
         classes = BookingApiApplication.class,
@@ -866,6 +867,80 @@ class JwtSecurityIntegrationTest {
                 "USER_ALREADY_EXISTS",
                 "/api/auth/register"
         );
+    }
+
+    @Test
+    void shouldExposeOpenApiDocumentationWithoutAuthentication()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/v3/api-docs")
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.openapi")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.info")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.paths")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.info.title")
+                                .value("Booking System API")
+                )
+                .andExpect(
+                        jsonPath("$.info.description")
+                                .isNotEmpty()
+                )
+                .andExpect(
+                        jsonPath("$.info.version")
+                                .value("1.0.0")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.components.securitySchemes.bearerAuth.type"
+                        ).value("http")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.components.securitySchemes.bearerAuth.scheme"
+                        ).value("bearer")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$.components.securitySchemes.bearerAuth.bearerFormat"
+                        ).value("JWT")
+                );
+    }
+
+    @Test
+    void shouldExposeSwaggerUiWithoutAuthentication()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/swagger-ui.html")
+                )
+                .andExpect(
+                        status().is3xxRedirection()
+                )
+                .andExpect(
+                        redirectedUrl(
+                                "/swagger-ui/index.html"
+                        )
+                );
+
     }
 
     private RegisteredUser registerUserAndExtractIdentity(
