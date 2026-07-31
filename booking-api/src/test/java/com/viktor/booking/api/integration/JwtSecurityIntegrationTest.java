@@ -1,5 +1,13 @@
 package com.viktor.booking.api.integration;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+import javax.crypto.SecretKey;
+import java.time.Instant;
+import java.util.Date;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viktor.booking.api.BookingApiApplication;
@@ -7,6 +15,8 @@ import com.viktor.booking.application.repository.UserRepository;
 import com.viktor.booking.application.security.PasswordHasher;
 import com.viktor.booking.domain.enums.UserRole;
 import com.viktor.booking.domain.model.User;
+import com.viktor.booking.application.repository.BookableServiceRepository;
+import com.viktor.booking.domain.model.BookableService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,6 +29,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -60,6 +72,30 @@ class JwtSecurityIntegrationTest {
     private static final String ADMIN_PASSWORD =
             "AdminPassword123!";
 
+    private static final String LOGIN_USER_EMAIL =
+            "integration-login-user@example.com";
+
+    private static final String LOGIN_USER_PASSWORD =
+            "LoginUserPassword123!";
+
+    private static final String INVALID_PASSWORD_USER_EMAIL =
+            "integration-invalid-password@example.com";
+
+    private static final String INVALID_PASSWORD_USER_PASSWORD =
+            "ValidPassword123!";
+
+    private static final String OPERATION_USER_EMAIL =
+            "integration-operation-user@example.com";
+
+    private static final String OPERATION_USER_PASSWORD =
+            "OperationUserPassword123!";
+
+    private static final String APPLICATION_JWT_SECRET =
+            "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+
+    private static final String ALTERNATIVE_JWT_SECRET =
+            "YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODk=";
+
     @Container
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES =
@@ -78,6 +114,227 @@ class JwtSecurityIntegrationTest {
 
     @Autowired
     private PasswordHasher passwordHasher;
+
+    @Autowired
+    private BookableServiceRepository serviceRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanDatabase() {
+        jdbcTemplate.execute(
+                """
+                TRUNCATE TABLE
+                    bookings,
+                    bookable_services,
+                    users
+                RESTART IDENTITY CASCADE
+                """
+        );
+    }
+
+    @Test
+    void shouldLoginRegisteredUser()
+            throws Exception {
+
+        registerUserAndExtractIdentity(
+                LOGIN_USER_EMAIL,
+                LOGIN_USER_PASSWORD
+        );
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                LOGIN_USER_EMAIL,
+                                "password",
+                                LOGIN_USER_PASSWORD
+                        )
+                );
+
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/login")
+                                        .contentType(
+                                                MediaType.APPLICATION_JSON
+                                        )
+                                        .content(requestBody)
+                        )
+                        .andExpect(
+                                status().isOk()
+                        )
+                        .andExpect(
+                                jsonPath("$.accessToken")
+                                        .isNotEmpty()
+                        )
+                        .andExpect(
+                                jsonPath("$.tokenType")
+                                        .value("Bearer")
+                        )
+                        .andExpect(
+                                jsonPath("$.user.email")
+                                        .value(LOGIN_USER_EMAIL)
+                        )
+                        .andExpect(
+                                jsonPath("$.user.role")
+                                        .value("USER")
+                        )
+                        .andReturn();
+
+        String accessToken =
+                extractAccessToken(result);
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(accessToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForIncorrectPassword()
+            throws Exception {
+
+        registerUserAndExtractIdentity(
+                INVALID_PASSWORD_USER_EMAIL,
+                INVALID_PASSWORD_USER_PASSWORD
+        );
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                INVALID_PASSWORD_USER_EMAIL,
+                                "password",
+                                "IncorrectPassword123!"
+                        )
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForUnknownEmail()
+            throws Exception {
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        Map.of(
+                                "email",
+                                "unknown-integration-user@example.com",
+                                "password",
+                                "UnknownPassword123!"
+                        )
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(requestBody)
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForMalformedJwt()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        "Bearer definitely-not-a-valid-jwt"
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForJwtWithInvalidSignature()
+            throws Exception {
+
+        Instant now = Instant.now();
+
+        String token = createJwt(
+                ALTERNATIVE_JWT_SECRET,
+                "invalid-signature-user@example.com",
+                now.minusSeconds(60),
+                now.plusSeconds(3600)
+        );
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(token)
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForExpiredJwt()
+            throws Exception {
+
+        Instant now = Instant.now();
+
+        String token = createJwt(
+                APPLICATION_JWT_SECRET,
+                "expired-token-user@example.com",
+                now.minusSeconds(7200),
+                now.minusSeconds(3600)
+        );
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(token)
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401WhenAuthorizationHeaderDoesNotUseBearerScheme()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        "Token some-token-value"
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
 
     @Test
     void shouldCompleteFullJwtSecurityAndBookingOwnershipFlow()
@@ -168,6 +425,241 @@ class JwtSecurityIntegrationTest {
         verifyRemovedUserCreationEndpointReturns404(
                 adminToken
         );
+    }
+
+    @Test
+    void shouldEnforceUserBookingOperationPermissions()
+            throws Exception {
+
+        RegisteredUser user =
+                registerUserAndExtractIdentity(
+                        OPERATION_USER_EMAIL,
+                        OPERATION_USER_PASSWORD
+                );
+
+        BookableService savedService =
+                serviceRepository.save(
+                        new BookableService(
+                                null,
+                                "User operation integration service",
+                                "Service for USER operation tests",
+                                60,
+                                true
+                        )
+                );
+
+        Long cancellationBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        savedService.getId(),
+                        "2031-02-10T10:00:00",
+                        "2031-02-10T11:00:00"
+                );
+
+        Long confirmationBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        savedService.getId(),
+                        "2031-02-10T12:00:00",
+                        "2031-02-10T13:00:00"
+                );
+
+        Long deletionBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        savedService.getId(),
+                        "2031-02-10T14:00:00",
+                        "2031-02-10T15:00:00"
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                cancellationBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(user.accessToken())
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(cancellationBookingId)
+                )
+                .andExpect(
+                        jsonPath("$.userId")
+                                .value(user.userId())
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/confirm",
+                                confirmationBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(user.accessToken())
+                                )
+                )
+                .andExpect(
+                        status().isForbidden()
+                );
+
+        verifyBookingStatus(
+                user.accessToken(),
+                confirmationBookingId,
+                "PENDING"
+        );
+
+        mockMvc.perform(
+                        delete(
+                                "/api/bookings/{id}",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(user.accessToken())
+                                )
+                )
+                .andExpect(
+                        status().isForbidden()
+                );
+
+        verifyBookingStatus(
+                user.accessToken(),
+                deletionBookingId,
+                "PENDING"
+        );
+    }
+
+    @Test
+    void shouldAllowAdminToCancelAndDeleteBookings()
+            throws Exception {
+
+        RegisteredUser user =
+                registerUserAndExtractIdentity(
+                        OPERATION_USER_EMAIL,
+                        OPERATION_USER_PASSWORD
+                );
+
+        createAdmin();
+
+        String adminToken =
+                loginAdminAndExtractToken();
+
+        Long serviceId =
+                createServiceAndExtractId(
+                        adminToken
+                );
+
+        Long cancellationBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        serviceId,
+                        "2031-03-10T10:00:00",
+                        "2031-03-10T11:00:00"
+                );
+
+        Long deletionBookingId =
+                createBookingWithForgedUserId(
+                        user.accessToken(),
+                        user.userId(),
+                        user.userId(),
+                        serviceId,
+                        "2031-03-10T12:00:00",
+                        "2031-03-10T13:00:00"
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                cancellationBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(cancellationBookingId)
+                )
+                .andExpect(
+                        jsonPath("$.userId")
+                                .value(user.userId())
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
+
+        mockMvc.perform(
+                        put(
+                                "/api/bookings/{id}/cancel",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(deletionBookingId)
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value("CANCELLED")
+                );
+
+        mockMvc.perform(
+                        delete(
+                                "/api/bookings/{id}",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isNoContent()
+                );
+
+        mockMvc.perform(
+                        get(
+                                "/api/bookings/{id}",
+                                deletionBookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(
+                        status().isNotFound()
+                );
     }
 
     private RegisteredUser registerUserAndExtractIdentity(
@@ -773,6 +1265,59 @@ class JwtSecurityIntegrationTest {
         return objectMapper.readTree(responseBody);
     }
 
+    private String createJwt(
+            String base64Secret,
+            String subject,
+            Instant issuedAt,
+            Instant expiration
+    ) {
+        SecretKey signingKey =
+                Keys.hmacShaKeyFor(
+                        Decoders.BASE64.decode(
+                                base64Secret
+                        )
+                );
+
+        return Jwts.builder()
+                .subject(subject)
+                .issuedAt(
+                        Date.from(issuedAt)
+                )
+                .expiration(
+                        Date.from(expiration)
+                )
+                .signWith(signingKey)
+                .compact();
+    }
+
+    private void verifyBookingStatus(
+            String accessToken,
+            Long bookingId,
+            String expectedStatus
+    ) throws Exception {
+
+        mockMvc.perform(
+                        get(
+                                "/api/bookings/{id}",
+                                bookingId
+                        )
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(accessToken)
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(bookingId)
+                )
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(expectedStatus)
+                );
+    }
     private String bearer(
             String token
     ) {
