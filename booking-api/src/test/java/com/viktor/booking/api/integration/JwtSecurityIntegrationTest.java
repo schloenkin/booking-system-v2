@@ -922,6 +922,61 @@ class JwtSecurityIntegrationTest {
                         jsonPath(
                                 "$.components.securitySchemes.bearerAuth.bearerFormat"
                         ).value("JWT")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['summary']"
+                        ).value("Register a new user")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['responses']['201']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['responses']['400']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/register']['post']['responses']['409']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/login']['post']['summary']"
+                        ).value("Authenticate an existing user")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/login']['post']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/auth/login']['post']['responses']['401']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.RegisterRequest")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.LoginRequest")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.AuthResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.ErrorResponse")
+                                .exists()
+                )
+                .andExpect(
+                        jsonPath("$.components.schemas.ValidationViolation")
+                                .exists()
                 );
     }
 
