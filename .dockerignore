@@ -1,0 +1,14 @@
+.git
+.gitignore
+
+.idea
+*.iml
+
+**/target
+
+.env
+*.log
+
+README.md
+docs
+request.http
