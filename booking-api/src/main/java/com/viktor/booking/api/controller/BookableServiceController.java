@@ -4,6 +4,7 @@ import com.viktor.booking.api.dto.BookableServiceCreateRequest;
 import com.viktor.booking.api.dto.BookableServiceResponse;
 import com.viktor.booking.application.service.BookableServiceService;
 import com.viktor.booking.domain.model.BookableService;
+import com.viktor.booking.application.exception.BookableServiceNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,30 +55,45 @@ public class BookableServiceController {
     public ResponseEntity<BookableServiceResponse> getServiceById(
             @PathVariable("id") Long id
     ) {
-        return serviceService.getServiceById(id)
-                .map(this::toResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        BookableService service =
+                serviceService.getServiceById(id)
+                        .orElseThrow(
+                                () -> new BookableServiceNotFoundException(id)
+                        );
+
+        return ResponseEntity.ok(
+                toResponse(service)
+        );
     }
 
     @PutMapping("/api/services/{id}/activate")
     public ResponseEntity<BookableServiceResponse> activateServiceById(
             @PathVariable("id") Long id
     ) {
-        return serviceService.activateServiceById(id)
-                .map(this::toResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        BookableService service =
+                serviceService.activateServiceById(id)
+                        .orElseThrow(
+                                () -> new BookableServiceNotFoundException(id)
+                        );
+
+        return ResponseEntity.ok(
+                toResponse(service)
+        );
     }
 
     @PutMapping("/api/services/{id}/deactivate")
     public ResponseEntity<BookableServiceResponse> deactivateServiceById(
             @PathVariable("id") Long id
     ) {
-        return serviceService.deactivateServiceById(id)
-                .map(this::toResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        BookableService service =
+                serviceService.deactivateServiceById(id)
+                        .orElseThrow(
+                                () -> new BookableServiceNotFoundException(id)
+                        );
+
+        return ResponseEntity.ok(
+                toResponse(service)
+        );
     }
 
     private BookableServiceResponse toResponse(

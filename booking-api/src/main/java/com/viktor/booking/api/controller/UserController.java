@@ -3,6 +3,7 @@ package com.viktor.booking.api.controller;
 import com.viktor.booking.api.dto.UserResponse;
 import com.viktor.booking.application.service.UserService;
 import com.viktor.booking.domain.model.User;
+import com.viktor.booking.application.exception.UserNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,10 +22,15 @@ public class UserController {
     public ResponseEntity<UserResponse> getUserById(
             @PathVariable("id") Long id
     ) {
-        return userService.getUserById(id)
-                .map(this::toResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        User user =
+                userService.getUserById(id)
+                        .orElseThrow(
+                                () -> new UserNotFoundException(id)
+                        );
+
+        return ResponseEntity.ok(
+                toResponse(user)
+        );
     }
 
     private UserResponse toResponse(User user) {
