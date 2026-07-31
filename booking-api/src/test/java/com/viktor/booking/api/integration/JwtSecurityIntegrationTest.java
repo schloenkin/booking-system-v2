@@ -1,5 +1,13 @@
 package com.viktor.booking.api.integration;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+import javax.crypto.SecretKey;
+import java.time.Instant;
+import java.util.Date;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viktor.booking.api.BookingApiApplication;
@@ -71,6 +79,12 @@ class JwtSecurityIntegrationTest {
 
     private static final String INVALID_PASSWORD_USER_PASSWORD =
             "ValidPassword123!";
+
+    private static final String APPLICATION_JWT_SECRET =
+            "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+
+    private static final String ALTERNATIVE_JWT_SECRET =
+            "YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODk=";
 
     @Container
     @ServiceConnection
@@ -220,6 +234,72 @@ class JwtSecurityIntegrationTest {
                                 .header(
                                         HttpHeaders.AUTHORIZATION,
                                         "Bearer definitely-not-a-valid-jwt"
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForJwtWithInvalidSignature()
+            throws Exception {
+
+        Instant now = Instant.now();
+
+        String token = createJwt(
+                ALTERNATIVE_JWT_SECRET,
+                "invalid-signature-user@example.com",
+                now.minusSeconds(60),
+                now.plusSeconds(3600)
+        );
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(token)
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401ForExpiredJwt()
+            throws Exception {
+
+        Instant now = Instant.now();
+
+        String token = createJwt(
+                APPLICATION_JWT_SECRET,
+                "expired-token-user@example.com",
+                now.minusSeconds(7200),
+                now.minusSeconds(3600)
+        );
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(token)
+                                )
+                )
+                .andExpect(
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    void shouldReturn401WhenAuthorizationHeaderDoesNotUseBearerScheme()
+            throws Exception {
+
+        mockMvc.perform(
+                        get("/api/bookings")
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        "Token some-token-value"
                                 )
                 )
                 .andExpect(
@@ -921,6 +1001,30 @@ class JwtSecurityIntegrationTest {
         return objectMapper.readTree(responseBody);
     }
 
+    private String createJwt(
+            String base64Secret,
+            String subject,
+            Instant issuedAt,
+            Instant expiration
+    ) {
+        SecretKey signingKey =
+                Keys.hmacShaKeyFor(
+                        Decoders.BASE64.decode(
+                                base64Secret
+                        )
+                );
+
+        return Jwts.builder()
+                .subject(subject)
+                .issuedAt(
+                        Date.from(issuedAt)
+                )
+                .expiration(
+                        Date.from(expiration)
+                )
+                .signWith(signingKey)
+                .compact();
+    }
     private String bearer(
             String token
     ) {
