@@ -1,8 +1,10 @@
 # Booking System v2
 
+[![CI](https://github.com/schloenkin/booking-system-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/schloenkin/booking-system-v2/actions/workflows/ci.yml)
+
 A production-style backend portfolio project built with Java and Spring Boot.
 
-Booking System v2 provides secure management of users, bookable services, and bookings. The project demonstrates modular architecture, domain-driven business rules, JWT authentication, role-based and object-level authorization, PostgreSQL persistence, database migrations, concurrency control, and automated testing.
+Booking System v2 provides secure management of users, bookable services, and bookings. The project demonstrates modular architecture, domain-driven business rules, JWT authentication, role-based and object-level authorization, PostgreSQL persistence, database migrations, concurrency control, automated testing, OpenAPI documentation, containerization, and continuous integration.
 
 ## Key Features
 
@@ -16,10 +18,13 @@ Booking System v2 provides secure management of users, bookable services, and bo
 - PostgreSQL persistence through Spring Data JPA
 - Flyway database migrations
 - Optimistic locking for concurrent booking updates
-- Consistent API error responses
+- Unified API error contract with stable machine-readable error codes
+- OpenAPI 3 documentation with Swagger UI and JWT authorization
 - Unit, controller, security, integration, and concurrency tests
 - PostgreSQL integration tests with Testcontainers
-- Docker Compose setup for local PostgreSQL
+- Multi-stage Docker image
+- Docker Compose runtime for the application and PostgreSQL
+- GitHub Actions CI for Maven verification and Docker image builds
 
 ## Technology Stack
 
@@ -31,7 +36,10 @@ Booking System v2 provides secure management of users, bookable services, and bo
 - Spring Data JPA
 - PostgreSQL 17
 - Flyway
+- Springdoc OpenAPI 2.8.17
+- Docker
 - Docker Compose
+- GitHub Actions
 - Maven
 - JUnit 5
 - Mockito
@@ -44,14 +52,20 @@ The project is organized as a multi-module Maven application:
 
 ```text
 booking-system-v2
+|-- .github
+|   `-- workflows
+|       `-- ci.yml
 |-- booking-domain
 |-- booking-application
 |-- booking-infrastructure
 |-- booking-api
 |-- docs
 |   `-- adr
+|-- .env.example
+|-- Dockerfile
 |-- compose.yaml
 |-- request.http
+|-- README.md
 `-- pom.xml
 ```
 
@@ -99,7 +113,7 @@ Examples:
 
 ### `booking-api`
 
-Contains the HTTP and security entry points.
+Contains the HTTP, documentation, and security entry points.
 
 Examples:
 
@@ -109,6 +123,7 @@ Examples:
 - Spring Security configuration
 - JWT authentication filter
 - global exception handling
+- OpenAPI configuration
 - application configuration
 - static demonstration page
 
@@ -179,6 +194,8 @@ The API uses stateless JWT authentication.
 | `GET` | `/api/health` | Application health check |
 | `GET` | `/api/services` | List bookable services |
 | `GET` | `/api/services/{id}` | Get a service by ID |
+
+Swagger UI and the generated OpenAPI documents are also publicly accessible.
 
 ### `USER` permissions
 
@@ -292,6 +309,87 @@ A complete example request collection is available in:
 
 [`request.http`](request.http)
 
+## OpenAPI and Swagger UI
+
+The API documentation is generated with Springdoc OpenAPI.
+
+After the application starts, the documentation is available at:
+
+```text
+Swagger UI:        http://localhost:8080/swagger-ui.html
+OpenAPI JSON:      http://localhost:8080/v3/api-docs
+OpenAPI YAML:      http://localhost:8080/v3/api-docs.yaml
+```
+
+The OpenAPI definition contains the HTTP bearer security scheme:
+
+```text
+bearerAuth
+```
+
+To call a protected endpoint from Swagger UI:
+
+1. Log in through `POST /api/auth/login`.
+2. Copy the returned access token.
+3. Click **Authorize** in Swagger UI.
+4. Paste the token without the `Bearer` prefix.
+5. Execute the protected request.
+
+Controllers document their success and error responses, including the shared `ErrorResponse` schema.
+
+## Unified Error Contract
+
+Application, validation, authentication, and authorization failures use the same response structure.
+
+Example:
+
+```json
+{
+  "timestamp": "2026-07-31T12:00:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "code": "VALIDATION_FAILED",
+  "message": "Request validation failed",
+  "path": "/api/auth/register",
+  "violations": [
+    {
+      "field": "password",
+      "message": "Password must contain between 8 and 72 characters"
+    }
+  ]
+}
+```
+
+Contract fields:
+
+| Field | Purpose |
+|---|---|
+| `timestamp` | Time when the response was created |
+| `status` | HTTP status code |
+| `error` | Standard HTTP status description |
+| `code` | Stable machine-readable API error code |
+| `message` | Human-readable error explanation |
+| `path` | Request path that produced the error |
+| `violations` | Field-level validation errors; empty for other errors |
+
+Examples of stable API error codes include:
+
+```text
+AUTHENTICATION_REQUIRED
+ACCESS_DENIED
+INVALID_CREDENTIALS
+VALIDATION_FAILED
+USER_NOT_FOUND
+SERVICE_NOT_FOUND
+BOOKING_TIME_CONFLICT
+BOOKING_CANNOT_BE_CONFIRMED
+BOOKING_CANNOT_BE_CANCELLED
+BOOKING_CANNOT_BE_DELETED
+INTERNAL_ERROR
+```
+
+The contract is verified by exception-handler, API, JWT security, and OpenAPI integration tests.
+
 ## Concurrency Control
 
 Bookings use optimistic locking through a JPA `@Version` field.
@@ -319,14 +417,14 @@ Migrations are located in:
 booking-infrastructure/src/main/resources/db/migration
 ```
 
-## Running the Project Locally
+## Running the Project with Docker Compose
 
 ### Prerequisites
 
-- Java 17
 - Docker Desktop or another Docker-compatible runtime
-- Maven, or an IDE with Maven support
 - Git
+
+Java and Maven are required only when building or running the application outside Docker.
 
 ### 1. Clone the repository
 
@@ -349,15 +447,13 @@ to:
 .env
 ```
 
-Example PowerShell command:
+PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Set secure local values in `.env`.
-
-Required variables:
+Set secure local values:
 
 ```properties
 POSTGRES_DB=booking_db
@@ -369,58 +465,77 @@ JWT_EXPIRATION_MS=3600000
 
 The real `.env` file is excluded from Git.
 
-### 3. Start PostgreSQL
+### 3. Build and start the complete application
 
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
 
-PostgreSQL is exposed locally on:
+Docker Compose starts:
 
-```text
-localhost:5433
-```
+- PostgreSQL;
+- the Booking System API.
 
-### 4. Build the project
+The API waits until PostgreSQL passes its health check.
 
-With Maven installed:
+### 4. Verify the containers
 
 ```bash
-mvn clean install
+docker compose ps
 ```
 
-Alternatively, use the root Maven project in the IDE:
+Local addresses:
 
 ```text
-booking-system-v2 -> Lifecycle -> clean
-booking-system-v2 -> Lifecycle -> install
+API:               http://localhost:8080
+Health check:      http://localhost:8080/api/health
+Swagger UI:        http://localhost:8080/swagger-ui.html
+PostgreSQL:        localhost:5433
 ```
 
-### 5. Run the application
+### 5. View application logs
 
-Run:
+```bash
+docker compose logs -f booking-api
+```
+
+Press `Ctrl+C` to leave the log view without stopping the containers.
+
+### 6. Stop the application
+
+```bash
+docker compose down
+```
+
+To stop the application and delete the PostgreSQL volume:
+
+```bash
+docker compose down -v
+```
+
+The `-v` option permanently removes local database data stored in the Compose volume.
+
+## Running from IntelliJ
+
+For development outside the application container, start only PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+Then run:
 
 ```text
 BookingApiApplication
 ```
 
-The API starts at:
-
-```text
-http://localhost:8080
-```
-
-Health check:
-
-```text
-http://localhost:8080/api/health
-```
+The application connects to PostgreSQL through the local port configured for development.
 
 ## Creating a Local Administrator
 
 Registration creates users with the `USER` role.
 
-For a local demonstration, first register a user:
+First register a user:
 
 ```powershell
 $body = @{
@@ -471,6 +586,8 @@ The project contains several test levels:
 - repository integration tests;
 - PostgreSQL integration tests;
 - JWT security integration tests;
+- error-contract API tests;
+- OpenAPI integration tests;
 - concurrency and optimistic-locking tests;
 - Testcontainers-based end-to-end integration tests.
 
@@ -481,6 +598,65 @@ mvn clean install
 ```
 
 Docker must be running for tests that start PostgreSQL containers.
+
+The same full build can be run from the root Maven project in IntelliJ:
+
+```text
+booking-system-v2
+`-- Lifecycle
+    |-- clean
+    `-- install
+```
+
+## Continuous Integration
+
+The GitHub Actions workflow is located at:
+
+```text
+.github/workflows/ci.yml
+```
+
+It runs for:
+
+- pushes to `main`;
+- pushes to branches matching `feature/**`;
+- pull requests targeting `main`.
+
+The CI job:
+
+1. checks out the repository;
+2. configures Temurin Java 17;
+3. restores the Maven dependency cache;
+4. runs:
+
+   ```bash
+   mvn --batch-mode --no-transfer-progress clean verify
+   ```
+
+5. builds the Docker image:
+
+   ```bash
+   docker build --tag booking-system:ci .
+   ```
+
+A change is considered verified only when both the Maven build and Docker image build succeed.
+
+## Docker Image
+
+The project uses a multi-stage Dockerfile.
+
+The build stage:
+
+- uses Maven with Java 17;
+- builds the multi-module project;
+- packages the executable `booking-api.jar`.
+
+The runtime stage:
+
+- uses a smaller Java 17 JRE image;
+- copies only the packaged application;
+- runs the process as a non-root `booking` user;
+- exposes port `8080`.
 
 ## Demonstrated End-to-End Flow
 
@@ -508,20 +684,6 @@ Delete cancelled booking as administrator
 Verify that the deleted booking returns 404
 ```
 
-## Error Handling
-
-The API provides centralized exception handling for cases such as:
-
-- validation failures;
-- missing resources;
-- duplicate users;
-- invalid credentials;
-- forbidden access;
-- conflicting bookings;
-- invalid booking status transitions;
-- forbidden booking deletion;
-- concurrent update conflicts.
-
 ## Design Decisions
 
 Important architectural decisions are documented under:
@@ -548,5 +710,8 @@ It demonstrates practical experience with:
 - relational persistence;
 - database migrations;
 - concurrency control;
-- automated testing;
-- Docker-based local infrastructure.
+- unified error-contract design;
+- OpenAPI and Swagger documentation;
+- automated testing with Testcontainers;
+- multi-stage Docker builds and Docker Compose;
+- continuous integration with GitHub Actions.
