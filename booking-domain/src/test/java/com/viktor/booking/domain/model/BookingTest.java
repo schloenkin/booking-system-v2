@@ -340,6 +340,34 @@ class BookingTest {
     }
 
     @Test
+    void shouldRejectRestorationWhenEndTimeIsBeforeStartTime() {
+        LocalDateTime startTime =
+                LocalDateTime.of(
+                        2030,
+                        2,
+                        1,
+                        10,
+                        0
+                );
+
+        LocalDateTime endTime =
+                startTime.minusMinutes(30);
+
+        assertThatThrownBy(() -> Booking.restore(
+                10L,
+                1L,
+                2L,
+                startTime,
+                endTime,
+                BookingStatus.CONFIRMED
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "End time must be after start time"
+                );
+    }
+
+    @Test
     void shouldRejectRestorationWhenStatusIsNull() {
         LocalDateTime startTime =
                 LocalDateTime.of(
