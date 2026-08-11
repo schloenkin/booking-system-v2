@@ -22,6 +22,11 @@ public class Booking {
             LocalDateTime startTime,
             LocalDateTime endTime
     ) {
+        if (startTime != null && !startTime.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException(
+                    "Start time must be in the future"
+            );
+        }
         return new Booking(
                 null,
                 userId,

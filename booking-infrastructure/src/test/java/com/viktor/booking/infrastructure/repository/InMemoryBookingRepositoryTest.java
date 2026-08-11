@@ -24,13 +24,7 @@ class InMemoryBookingRepositoryTest {
     @Test
     void shouldUpdateStatusAndPreserveExistingBookingData() {
         LocalDateTime originalStartTime =
-                LocalDateTime.of(
-                        2026,
-                        8,
-                        1,
-                        10,
-                        0
-                );
+                LocalDateTime.now().plusDays(1);
 
         LocalDateTime originalEndTime =
                 originalStartTime.plusHours(1);
@@ -126,23 +120,13 @@ class InMemoryBookingRepositoryTest {
 
     @Test
     void shouldRejectUpdateWithoutBookingId() {
+        LocalDateTime startTime =
+                LocalDateTime.now().plusDays(1);
         Booking booking = Booking.create(
                 1L,
                 10L,
-                LocalDateTime.of(
-                        2026,
-                        8,
-                        1,
-                        10,
-                        0
-                ),
-                LocalDateTime.of(
-                        2026,
-                        8,
-                        1,
-                        11,
-                        0
-                )
+                startTime,
+                startTime.plusHours(1)
         );
 
         assertThrows(

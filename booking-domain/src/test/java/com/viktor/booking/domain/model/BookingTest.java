@@ -35,6 +35,21 @@ class BookingTest {
     }
 
     @Test
+    void shouldRejectBookingWhenStartTimeIsInThePast() {
+        LocalDateTime startTime =
+                LocalDateTime.now().minusDays(1);
+
+        assertThatThrownBy(() ->
+                Booking.create(
+                        1L,
+                        2L,
+                        startTime,
+                        startTime.plusMinutes(60)
+                )
+        ).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void shouldRejectConfirmationWhenBookingIsAlreadyConfirmed() {
         LocalDateTime startTime =
                 LocalDateTime.now().plusDays(1);
