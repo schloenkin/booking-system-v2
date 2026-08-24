@@ -19,6 +19,8 @@ import com.viktor.booking.domain.model.BookableService;
 import com.viktor.booking.application.exception.InvalidBookingDurationException;
 import com.viktor.booking.application.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingTimeConflictException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.never;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -996,6 +998,123 @@ class BookingServiceTest {
                         pageRequest
                 );
     }
+
+    @Test
+    void shouldRescheduleBookingWhenNewTimeDoesNotConflict() {
+
+        Long bookingId = 1L;
+        Long userId = 1L;
+        Long serviceId = 2L;
+
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = oldStartTime.plusMinutes(30);
+        LocalDateTime newEndTime = newStartTime.plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                bookingId,
+                userId,
+                serviceId,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+        when(bookingRepository.findById(bookingId))
+                .thenReturn(Optional.of(booking));
+
+        when(bookingRepository.existsConflictingBookingExcludingId(
+                bookingId,
+                serviceId,
+                newStartTime,
+                newEndTime
+        )).thenReturn(false);
+
+        when(bookingRepository.update(booking))
+                .thenReturn(Optional.of(booking));
+
+        Optional<Booking> result =
+                bookingService.rescheduleBookingById(
+                        bookingId,
+                        newStartTime,
+                        newEndTime
+                );
+
+        assertThat(result).isPresent();
+
+        assertEquals(newStartTime, result.get().getStartTime());
+        assertEquals(newEndTime, result.get().getEndTime());
+
+        verify(bookingRepository).findById(bookingId);
+
+        verify(bookingRepository)
+                .existsConflictingBookingExcludingId(
+                        bookingId,
+                        serviceId,
+                        newStartTime,
+                        newEndTime
+                );
+
+        verify(bookingRepository).update(booking);
+    }
+
+    @Test
+    void shouldRejectRescheduleWhenNewTimeConflicts(){
+        Long bookingId = 1L;
+        Long userId = 1L;
+        Long serviceId = 2L;
+
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = oldStartTime.plusMinutes(30);
+        LocalDateTime newEndTime = newStartTime.plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                bookingId,
+                userId,
+                serviceId,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+        when(bookingRepository.findById(bookingId))
+                .thenReturn(Optional.of(booking));
+
+        when(bookingRepository.existsConflictingBookingExcludingId(
+                bookingId,
+                serviceId,
+                newStartTime,
+                newEndTime
+        )).thenReturn(true);
+
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+
+        assertThatThrownBy(() ->
+                bookingService.rescheduleBookingById(
+                        bookingId,
+                        newStartTime,
+                        newEndTime)
+        )
+                .isInstanceOf(BookingTimeConflictException.class)
+                        .hasMessage(
+                                "Bookable service is already booked "
+                                + "for the requested time, service id: 2"
+                        );
+
+        verify(bookingRepository).findById(bookingId);
+
+        verify(bookingRepository)
+                .existsConflictingBookingExcludingId(
+                        bookingId,
+                        serviceId,
+                        newStartTime,
+                        newEndTime
+                );
+        verifyNoMoreInteractions(bookingRepository);
+    }
+
     private Booking bookingWithStatus(
             Long bookingId,
             BookingStatus status

@@ -161,7 +161,17 @@ public class InMemoryBookingRepository implements BookingRepository {
                                 && booking.getEndTime().isAfter(startTime)
                 );
     }
-
+    @Override
+    public boolean existsConflictingBookingExcludingId(
+            Long bookingId,
+            Long serviceId,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    ) {
+        throw new UnsupportedOperationException(
+                "Not implemented yet"
+        );
+    }
     @Override
     public Booking save(Booking booking) {
         Booking savedBooking = Booking.restore(

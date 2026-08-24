@@ -30,6 +30,13 @@ public interface BookingRepository {
             LocalDateTime endTime
     );
 
+    boolean existsConflictingBookingExcludingId(
+            Long bookingId,
+            Long serviceId,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    );
+
     Booking save(Booking booking);
 
     Optional<Booking> update(

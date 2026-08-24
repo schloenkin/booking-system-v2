@@ -4,12 +4,14 @@ import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
+import com.viktor.booking.domain.exception.BookingCannotBeRescheduledException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 class BookingTest {
@@ -535,5 +537,212 @@ class BookingTest {
                         "Service id must not be null"
                 );
     }
+    @Test
+    void shouldReschedulePendingBookingWhenNewTimeIsValid() {
 
+        // given
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().plusDays(2);
+        LocalDateTime newEndTime = newStartTime.plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+
+        // when
+        booking.reschedule(newStartTime, newEndTime);
+
+        // then
+        assertEquals(newStartTime, booking.getStartTime());
+        assertEquals(newEndTime, booking.getEndTime());
+    }
+
+    @Test
+    void shouldRejectRescheduleWhenBookingIsCancelled() {
+
+        // given
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().plusDays(2);
+        LocalDateTime newEndTime = newStartTime.plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.CANCELLED
+        );
+
+        // when + then
+        assertThatThrownBy(() ->
+                booking.reschedule(newStartTime, newEndTime)
+        )
+                .isInstanceOf(BookingCannotBeRescheduledException.class)
+                .hasMessage(
+                        "Booking cannot be rescheduled from status: CANCELLED"
+                );
+
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+    }
+    @Test
+    void shouldRescheduleConfirmedBookingWhenNewTimeIsValid() {
+
+        // given
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().plusDays(2);
+        LocalDateTime newEndTime = newStartTime.plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.CONFIRMED
+        );
+
+        // when
+        booking.reschedule(newStartTime, newEndTime);
+
+        // then
+        assertEquals(newStartTime, booking.getStartTime());
+        assertEquals(newEndTime, booking.getEndTime());
+    }
+    @Test
+    void shouldRejectRescheduleWhenNewStartTimeIsInPast() {
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().minusDays(1);
+        LocalDateTime newEndTime = newStartTime.plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+        assertThatThrownBy(() ->
+                booking.reschedule(newStartTime, newEndTime)
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Start time must be in the future"
+                );
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+    }
+    @Test
+    void shouldRejectRescheduleWhenNewStartTimeIsNull(){
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newEndTime = LocalDateTime.now().plusDays(2).plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+
+        assertThatThrownBy(() -> booking.reschedule(null, newEndTime))
+                .isInstanceOf(IllegalArgumentException.class)
+	.hasMessage(
+                "Start time must not be null"
+        );
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+
+    }
+
+    @Test
+    void shouldRejectRescheduleWhenNewEndTimeIsNull(){
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().plusDays(2).plusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+
+        assertThatThrownBy(() -> booking.reschedule(newStartTime,null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "End time must not be null"
+                );
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+
+    }
+    @Test
+    void shouldRejectRescheduleWhenNewEndTimeIsBeforeNewStartTime(){
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().plusDays(2);
+        LocalDateTime newEndTime = newStartTime.minusMinutes(60);
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+        assertThatThrownBy(() -> booking.reschedule(newStartTime,newEndTime))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "End time must be after start time"
+                );
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+    }
+    @Test
+    void shouldRejectRescheduleWhenNewEndTimeEqualsNewStartTime(){
+        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
+
+        LocalDateTime newStartTime = LocalDateTime.now().plusDays(2);
+        LocalDateTime newEndTime = newStartTime;
+
+        Booking booking = Booking.restore(
+                1L,
+                1L,
+                2L,
+                oldStartTime,
+                oldEndTime,
+                BookingStatus.PENDING
+        );
+        assertThatThrownBy(()->
+                        booking.reschedule(newStartTime, newEndTime))
+                                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("End time must be after start time"
+                );
+        assertEquals(oldStartTime, booking.getStartTime());
+        assertEquals(oldEndTime, booking.getEndTime());
+    }
 }

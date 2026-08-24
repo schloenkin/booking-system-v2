@@ -4,6 +4,7 @@ import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
 import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
+import com.viktor.booking.domain.exception.BookingCannotBeRescheduledException;
 
 import java.time.LocalDateTime;
 
@@ -137,12 +138,48 @@ public class Booking {
 
         this.status = BookingStatus.CANCELLED;
     }
+
     public void ensureCanBeDeleted() {
         if (status != BookingStatus.CANCELLED) {
             throw new BookingCannotBeDeletedException(
                     status
             );
         }
+    }
+
+    public void reschedule(LocalDateTime newStartTime, LocalDateTime newEndTime){
+        if (status == BookingStatus.CANCELLED) {
+            throw new BookingCannotBeRescheduledException(
+                    status
+            );
+        }
+
+        if (newStartTime == null) {
+            throw new IllegalArgumentException(
+                    "Start time must not be null"
+            );
+        }
+
+        if (newEndTime == null) {
+            throw new IllegalArgumentException(
+                    "End time must not be null"
+            );
+        }
+
+        if (!newStartTime.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException(
+                    "Start time must be in the future"
+            );
+        }
+
+        if (!newEndTime.isAfter(newStartTime)) {
+            throw new IllegalArgumentException(
+                    "End time must be after start time"
+            );
+        }
+
+        this.startTime = newStartTime;
+        this.endTime = newEndTime;
     }
 
 }
