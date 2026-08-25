@@ -146,6 +146,28 @@ public class BookingAuthorizationService {
                 bookingId
         );
     }
+    public Optional<Booking> rescheduleBookingById(
+            AuthenticatedUserContext context,
+            Long bookingId,
+            LocalDateTime newStartTime,
+            LocalDateTime newEndTime
+    ) {
+        Optional<Booking> accessibleBooking =
+                findAccessibleBooking(
+                        context,
+                        bookingId
+                );
+
+        if (accessibleBooking.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return bookingService.rescheduleBookingById(
+                bookingId,
+                newStartTime,
+                newEndTime
+        );
+    }
 
     private Optional<Booking> findAccessibleBooking(
             AuthenticatedUserContext context,

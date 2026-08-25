@@ -744,6 +744,109 @@ class JpaBookingRepositoryAdapterIntegrationTest {
                 .isFalse();
     }
 
+    @Test
+    void shouldNotDetectConflictWhenConflictingBookingIsExcluded() {
+        UserEntity user = entityManager.persistAndFlush(
+                new UserEntity(
+                        "conflict-test@example.com",
+                        "hashed-password",
+                        UserRole.USER
+                )
+        );
+
+        BookableServiceEntity service = entityManager.persistAndFlush(
+                new BookableServiceEntity(
+                        "Conflict test service",
+                        "Service for testing booking conflicts",
+                        60,
+                        true
+                )
+        );
+
+        LocalDateTime existingStartTime =
+                LocalDateTime.of(2030, 1, 10, 10, 0);
+
+        Booking existingBooking = Booking.create(
+                user.getId(),
+                service.getId(),
+                existingStartTime,
+                existingStartTime.plusMinutes(60)
+        );
+
+        Booking savedBooking =
+                bookingRepositoryAdapter.save(existingBooking);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        boolean conflict =
+                bookingRepositoryAdapter.existsConflictingBookingExcludingId(
+                        savedBooking.getId(),
+                        service.getId(),
+                        existingStartTime.plusMinutes(30),
+                        existingStartTime.plusMinutes(90)
+                );
+
+        assertThat(conflict)
+                .isFalse();
+    }
+
+    @Test
+    void shouldDetectConflictWhenAnotherBookingOverlaps() {
+        UserEntity user = entityManager.persistAndFlush(
+                new UserEntity(
+                        "conflict-test@example.com",
+                        "hashed-password",
+                        UserRole.USER
+                )
+        );
+
+        BookableServiceEntity service = entityManager.persistAndFlush(
+                new BookableServiceEntity(
+                        "Conflict test service",
+                        "Service for testing booking conflicts",
+                        60,
+                        true
+                )
+        );
+
+        LocalDateTime existingStartTime =
+                LocalDateTime.of(2030, 1, 10, 10, 0);
+
+        Booking firstBooking = Booking.create(
+                user.getId(),
+                service.getId(),
+                existingStartTime,
+                existingStartTime.plusMinutes(60)
+        );
+
+        Booking secondBooking = Booking.create(
+                user.getId(),
+                service.getId(),
+                existingStartTime.plusMinutes(30),
+                existingStartTime.plusMinutes(90)
+        );
+
+        Booking savedFirstBooking =
+                bookingRepositoryAdapter.save(firstBooking);
+
+        bookingRepositoryAdapter.save(secondBooking);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        boolean conflict =
+                bookingRepositoryAdapter.existsConflictingBookingExcludingId(
+                        savedFirstBooking.getId(),
+                        service.getId(),
+                        existingStartTime.plusMinutes(30),
+                        existingStartTime.plusMinutes(90)
+                );
+
+        assertThat(conflict)
+                .isTrue();
+    }
+
     @Configuration
     @EnableAutoConfiguration
     @EntityScan(

@@ -22,4 +22,11 @@ public interface BookingJpaRepository
             LocalDateTime endTime,
             LocalDateTime startTime
     );
+    boolean existsByIdNotAndService_IdAndStatusNotAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long bookingId,
+            Long serviceId,
+            BookingStatus excludedStatus,
+            LocalDateTime endTime,
+            LocalDateTime startTime
+    );
 }

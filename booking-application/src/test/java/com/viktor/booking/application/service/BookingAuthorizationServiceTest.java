@@ -568,6 +568,105 @@ class BookingAuthorizationServiceTest {
                 .confirmBookingById(90L);
     }
 
+    @Test
+    void shouldRescheduleUsersOwnBooking() {
+        AuthenticatedUserContext context =
+                userContext(7L);
+
+        Booking pendingBooking =
+                bookingForUser(
+                        80L,
+                        7L,
+                        BookingStatus.PENDING
+                );
+
+        LocalDateTime newStartTime =
+                LocalDateTime.now().plusDays(2);
+
+        LocalDateTime newEndTime =
+                newStartTime.plusHours(1);
+
+        when(bookingService.getBookingById(80L))
+                .thenReturn(
+                        Optional.of(
+                                pendingBooking
+                        )
+                );
+
+        when(bookingService.rescheduleBookingById(
+                80L,
+                newStartTime,
+                newEndTime
+        ))
+                .thenReturn(
+                        Optional.of(
+                                pendingBooking
+                        )
+                );
+
+        Optional<Booking> result =
+                authorizationService.rescheduleBookingById(
+                        context,
+                        80L,
+                        newStartTime,
+                        newEndTime
+                );
+
+        assertThat(result)
+                .containsSame(pendingBooking);
+
+        verify(bookingService)
+                .rescheduleBookingById(
+                        80L,
+                        newStartTime,
+                        newEndTime
+                );
+    }
+
+    @Test
+    void shouldNotRescheduleAnotherUsersBooking() {
+        AuthenticatedUserContext context =
+                userContext(7L);
+
+        Booking anotherUsersBooking  =
+                bookingForUser(
+                        80L,
+                        9L,
+                        BookingStatus.PENDING
+                );
+
+        LocalDateTime newStartTime =
+                LocalDateTime.now().plusDays(2);
+
+        LocalDateTime newEndTime =
+                newStartTime.plusHours(1);
+
+        when(bookingService.getBookingById(80L))
+                .thenReturn(
+                        Optional.of(
+                                anotherUsersBooking
+                        )
+                );
+
+        Optional<Booking> result =
+                authorizationService.rescheduleBookingById(
+                        context,
+                        80L,
+                        newStartTime,
+                        newEndTime
+                );
+
+        assertThat(result)
+                .isEmpty();
+
+        verify(bookingService, never())
+                .rescheduleBookingById(
+                        80L,
+                        newStartTime,
+                        newEndTime
+                );
+    }
+
     private AuthenticatedUserContext userContext(
             Long userId
     ) {
@@ -609,4 +708,5 @@ class BookingAuthorizationServiceTest {
                 status
         );
     }
+
 }

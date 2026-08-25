@@ -148,14 +148,20 @@ public class JpaBookingRepositoryAdapter implements BookingRepository {
                 );
     }
     @Override
+    @Transactional(readOnly = true)
     public boolean existsConflictingBookingExcludingId(
             Long bookingId,
             Long serviceId,
             LocalDateTime startTime,
             LocalDateTime endTime
     ) {
-        throw new UnsupportedOperationException(
-                "Not implemented yet"
+        return bookingJpaRepository
+                .existsByIdNotAndService_IdAndStatusNotAndStartTimeLessThanAndEndTimeGreaterThan(
+                        bookingId,
+                        serviceId,
+                        BookingStatus.CANCELLED,
+                        endTime,
+                        startTime
         );
     }
 

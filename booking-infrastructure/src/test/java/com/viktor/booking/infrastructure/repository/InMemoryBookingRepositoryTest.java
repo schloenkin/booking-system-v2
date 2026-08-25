@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -133,5 +134,114 @@ class InMemoryBookingRepositoryTest {
                 IllegalArgumentException.class,
                 () -> repository.update(booking)
         );
+    }
+    @Test
+    void shouldNotFindConflictWhenOnlyConflictingBookingIsExcluded() {
+        // given
+        LocalDateTime startTime =
+                LocalDateTime.now().plusDays(1);
+
+        LocalDateTime endTime =
+                startTime.plusHours(1);
+
+        Booking savedBooking = repository.save(
+                Booking.create(
+                        1L,
+                        10L,
+                        startTime,
+                        endTime
+                )
+        );
+
+        // when
+        boolean result =
+                repository.existsConflictingBookingExcludingId(
+                        savedBooking.getId(),
+                        savedBooking.getServiceId(),
+                        startTime,
+                        endTime
+                );
+
+        // then
+        assertFalse(result);
+    }
+
+    @Test
+    void shouldFindConflictWhenAnotherBookingOverlaps() {
+        // given
+        LocalDateTime startTime =
+                LocalDateTime.now().plusDays(1);
+
+        LocalDateTime endTime =
+                startTime.plusHours(1);
+
+        Booking bookingToReschedule = repository.save(
+                Booking.create(
+                        1L,
+                        10L,
+                        startTime,
+                        endTime
+                )
+        );
+
+        repository.save(
+                Booking.create(
+                        2L,
+                        10L,
+                        startTime.plusMinutes(30),
+                        endTime.plusMinutes(30)
+                )
+        );
+
+        // when
+        boolean result =
+                repository.existsConflictingBookingExcludingId(
+                        bookingToReschedule.getId(),
+                        bookingToReschedule.getServiceId(),
+                        startTime,
+                        endTime
+                );
+
+        // then
+        assertTrue(result);
+    }
+    @Test
+    void shouldNotFindConflictWhenAnotherBookingDoesNotOverlap() {
+        // given
+        LocalDateTime startTime =
+                LocalDateTime.now().plusDays(1);
+
+        LocalDateTime endTime =
+                startTime.plusHours(1);
+
+        Booking bookingToReschedule = repository.save(
+                Booking.create(
+                        1L,
+                        10L,
+                        startTime,
+                        endTime
+                )
+        );
+
+        repository.save(
+                Booking.create(
+                        2L,
+                        10L,
+                        startTime.plusHours(2),
+                        endTime.plusHours(2)
+                )
+        );
+
+        // when
+        boolean result =
+                repository.existsConflictingBookingExcludingId(
+                        bookingToReschedule.getId(),
+                        bookingToReschedule.getServiceId(),
+                        startTime,
+                        endTime
+                );
+
+        // then
+        assertFalse(result);
     }
 }
