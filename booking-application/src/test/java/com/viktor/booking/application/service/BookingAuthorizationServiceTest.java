@@ -667,6 +667,61 @@ class BookingAuthorizationServiceTest {
                 );
     }
 
+    @Test
+    void shouldAllowAdminToRescheduleAnotherUsersBooking() {
+        AuthenticatedUserContext context =
+                adminContext(100L);
+
+        Booking anotherUsersBooking  =
+                bookingForUser(
+                        80L,
+                        9L,
+                        BookingStatus.CONFIRMED
+                );
+
+        LocalDateTime newStartTime =
+                LocalDateTime.now().plusDays(2);
+
+        LocalDateTime newEndTime =
+                newStartTime.plusHours(1);
+
+        when(bookingService.getBookingById(80L))
+                .thenReturn(
+                        Optional.of(
+                                anotherUsersBooking
+                        )
+                );
+
+        when(bookingService.rescheduleBookingById(
+                80L,
+                newStartTime,
+                newEndTime
+        ))
+                .thenReturn(
+                        Optional.of(
+                                anotherUsersBooking
+                        )
+                );
+
+        Optional<Booking> result =
+                authorizationService.rescheduleBookingById(
+                        context,
+                        80L,
+                        newStartTime,
+                        newEndTime
+                );
+
+        assertThat(result)
+                .containsSame(anotherUsersBooking);
+
+        verify(bookingService)
+                .rescheduleBookingById(
+                        80L,
+                        newStartTime,
+                        newEndTime
+                );
+    }
+
     private AuthenticatedUserContext userContext(
             Long userId
     ) {

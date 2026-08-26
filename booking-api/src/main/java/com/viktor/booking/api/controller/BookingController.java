@@ -1,8 +1,6 @@
 package com.viktor.booking.api.controller;
 
-import com.viktor.booking.api.dto.BookingCreateRequest;
-import com.viktor.booking.api.dto.BookingResponse;
-import com.viktor.booking.api.dto.PageResponse;
+import com.viktor.booking.api.dto.*;
 import com.viktor.booking.api.security.AuthenticatedUser;
 import com.viktor.booking.application.query.BookingSearchCriteria;
 import com.viktor.booking.application.query.PageRequestData;
@@ -12,7 +10,6 @@ import com.viktor.booking.application.service.BookingAuthorizationService;
 import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.model.Booking;
 import com.viktor.booking.api.config.OpenApiConfig;
-import com.viktor.booking.api.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -598,70 +595,92 @@ public class BookingController {
                 toResponse(booking)
         );
     }
+    @Operation(
+            summary = "Reschedule a booking",
+            security = @SecurityRequirement(
+                    name = "bearerAuth"
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Booking rescheduled"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid reschedule data"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Booking not found"
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Booking cannot be rescheduled or time conflicts"
+            )
+    })
+    @PutMapping("/api/bookings/{id}/reschedule")
+    public ResponseEntity<BookingResponse> rescheduleBookingById(
+            @AuthenticationPrincipal
+            AuthenticatedUser authenticatedUser,
+
+            @Parameter(
+                    description = "Booking identifier",
+                    example = "25",
+                    required = true
+            )
+            @PathVariable("id")
+            Long id,
+
+            @Valid
+            @RequestBody
+            BookingRescheduleRequest request
+    ) {
+        AuthenticatedUserContext context =
+                toContext(authenticatedUser);
+
+        Booking booking =
+                authorizationService
+                        .rescheduleBookingById(
+                                context,
+                                id,
+                                request.getStartTime(),
+                                request.getEndTime()
+                        )
+                        .orElseThrow(
+                                () -> new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Booking not found"
+                                )
+                        );
+
+        return ResponseEntity.ok(
+                toResponse(booking)
+        );
+    }
 
     @Operation(
             summary = "Create a booking",
-            description = """
-                Creates a new booking for the authenticated user.
-
-                The selected service must exist and be active.
-                The requested time interval must be valid and must not \
-                conflict with an existing booking.
-                """
+            security = @SecurityRequirement(
+                    name = "bearerAuth"
+            )
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
-                    description = "Booking created successfully",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(
-                                    implementation = BookingResponse.class
-                            )
-                    )
+                    description = "Booking created"
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Request validation or booking time interval is invalid",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Authentication is required",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
+                    description = "Invalid booking data"
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "Bookable service was not found",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
+                    description = "Bookable service not found"
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = """
-                        Booking conflicts with an existing booking or \
-                        the selected service cannot currently be booked
-                        """,
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
+                    description = "Booking time conflict"
             )
     })
     @PostMapping("/api/bookings")
