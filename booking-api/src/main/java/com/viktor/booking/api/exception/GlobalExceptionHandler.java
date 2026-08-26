@@ -18,6 +18,7 @@ import com.viktor.booking.domain.enums.BookingStatus;
 import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
+import com.viktor.booking.domain.exception.BookingCannotBeRescheduledException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -330,6 +331,20 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 ApiErrorCode.MALFORMED_REQUEST,
                 "Request body contains malformed JSON",
+                request
+        );
+    }
+
+    @ExceptionHandler(BookingCannotBeRescheduledException.class)
+    public ResponseEntity<ErrorResponse>
+    handleBookingCannotBeRescheduledException(
+            BookingCannotBeRescheduledException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ApiErrorCode.BOOKING_CANNOT_BE_RESCHEDULED,
+                exception.getMessage(),
                 request
         );
     }

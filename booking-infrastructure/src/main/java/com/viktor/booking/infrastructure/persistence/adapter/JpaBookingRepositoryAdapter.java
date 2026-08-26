@@ -147,6 +147,23 @@ public class JpaBookingRepositoryAdapter implements BookingRepository {
                         startTime
                 );
     }
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsConflictingBookingExcludingId(
+            Long bookingId,
+            Long serviceId,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    ) {
+        return bookingJpaRepository
+                .existsByIdNotAndService_IdAndStatusNotAndStartTimeLessThanAndEndTimeGreaterThan(
+                        bookingId,
+                        serviceId,
+                        BookingStatus.CANCELLED,
+                        endTime,
+                        startTime
+        );
+    }
 
     @Override
     public Booking save(Booking booking) {

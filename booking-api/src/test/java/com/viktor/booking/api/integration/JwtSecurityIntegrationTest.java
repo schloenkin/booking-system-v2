@@ -1268,6 +1268,36 @@ class JwtSecurityIntegrationTest {
                                 "$['components']['schemas']['UserResponse']" +
                                         "['properties']['role']['enum']"
                         ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/reschedule']['put']['summary']"
+                        ).value("Reschedule a booking")
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/reschedule']['put']['security'][0]['bearerAuth']"
+                        ).isArray()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/reschedule']['put']['responses']['200']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/reschedule']['put']['responses']['400']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/reschedule']['put']['responses']['404']"
+                        ).exists()
+                )
+                .andExpect(
+                        jsonPath(
+                                "$['paths']['/api/bookings/{id}/reschedule']['put']['responses']['409']"
+                        ).exists()
                 );
     }
 

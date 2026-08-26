@@ -54,6 +54,7 @@ public class InMemoryBookingRepository implements BookingRepository {
                 .filter(booking -> booking.getId().equals(id))
                 .findFirst();
     }
+
     @Override
     public List<Booking> findByStatus(BookingStatus status) {
         return bookings
@@ -163,6 +164,28 @@ public class InMemoryBookingRepository implements BookingRepository {
     }
 
     @Override
+    public boolean existsConflictingBookingExcludingId(
+            Long bookingId,
+            Long serviceId,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    ) {
+        return bookings.stream()
+                .filter(booking ->
+                        !booking.getId().equals(bookingId))
+                .filter(booking ->
+                        booking.getServiceId().equals(serviceId)
+                )
+                .filter(booking ->
+                        booking.getStatus() != BookingStatus.CANCELLED
+                )
+                .anyMatch(booking ->
+                        booking.getStartTime().isBefore(endTime)
+                                && booking.getEndTime().isAfter(startTime)
+                );
+    }
+
+    @Override
     public Booking save(Booking booking) {
         Booking savedBooking = Booking.restore(
                 nextId,
@@ -230,32 +253,27 @@ public class InMemoryBookingRepository implements BookingRepository {
             String sortBy
     ) {
         Comparator<Booking> comparator = switch (sortBy) {
-            case "id" ->
-                    Comparator.comparing(
-                            Booking::getId,
-                            Comparator.nullsLast(Long::compareTo)
-                    );
+            case "id" -> Comparator.comparing(
+                    Booking::getId,
+                    Comparator.nullsLast(Long::compareTo)
+            );
 
-            case "endTime" ->
-                    Comparator.comparing(
-                            Booking::getEndTime
-                    );
+            case "endTime" -> Comparator.comparing(
+                    Booking::getEndTime
+            );
 
-            case "status" ->
-                    Comparator.comparing(
-                            Booking::getStatus
-                    );
+            case "status" -> Comparator.comparing(
+                    Booking::getStatus
+            );
 
-            case "startTime" ->
-                    Comparator.comparing(
-                            Booking::getStartTime
-                    );
+            case "startTime" -> Comparator.comparing(
+                    Booking::getStartTime
+            );
 
-            default ->
-                    throw new IllegalArgumentException(
-                            "Unsupported booking sort field: "
-                                    + sortBy
-                    );
+            default -> throw new IllegalArgumentException(
+                    "Unsupported booking sort field: "
+                            + sortBy
+            );
         };
 
         return comparator.thenComparing(

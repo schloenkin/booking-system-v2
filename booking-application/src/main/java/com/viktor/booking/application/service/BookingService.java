@@ -226,5 +226,40 @@ public class BookingService {
         );
 
     }
+    @Transactional
+    public Optional<Booking> rescheduleBookingById(
+            Long bookingId,
+            LocalDateTime newStartTime,
+            LocalDateTime newEndTime
+    ) {
+        Optional<Booking> booking =
+                bookingRepository.findById(bookingId);
+
+        if (booking.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Booking existingBooking = booking.get();
+
+        if (bookingRepository.existsConflictingBookingExcludingId(
+                bookingId,
+                existingBooking.getServiceId(),
+                newStartTime,
+                newEndTime
+        )) {
+            throw new BookingTimeConflictException(
+                    existingBooking.getServiceId()
+            );
+        }
+
+        existingBooking.reschedule(
+                newStartTime,
+                newEndTime
+        );
+
+        return bookingRepository.update(
+                existingBooking
+        );
+    }
 
 }
