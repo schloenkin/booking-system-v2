@@ -20,10 +20,7 @@ public class Booking {
             LocalDateTime startTime,
             LocalDateTime endTime
     ) {
-        if (startTime != null && !startTime.isAfter(LocalDateTime.now())) {
-            throw new BookingInPastException();
-        }
-        return new Booking(
+        Booking booking = new Booking(
                 null,
                 userId,
                 serviceId,
@@ -31,7 +28,14 @@ public class Booking {
                 endTime,
                 BookingStatus.PENDING
         );
+
+        if (!booking.startTime.isAfter(LocalDateTime.now())) {
+            throw new BookingInPastException();
+        }
+
+        return booking;
     }
+
 
     public static Booking restore(
             Long id,

@@ -119,15 +119,12 @@ public class BookingService {
 
     @Transactional
     public Booking createBooking(Long userId, Long serviceId, LocalDateTime startTime, LocalDateTime endTime) {
-        if (!endTime.isAfter(startTime)) {
-            throw new InvalidBookingTimeException(
-                    "End time must be after start time"
-            );
-        }
-
-        if (!startTime.isAfter(LocalDateTime.now())) {
-            throw new BookingInPastException();
-        }
+        Booking booking = Booking.create(
+                userId,
+                serviceId,
+                startTime,
+                endTime
+        );
 
         if (userRepository.findById(userId).isEmpty()) {
             throw new UserNotFoundException(userId);
@@ -161,13 +158,6 @@ public class BookingService {
         )) {
             throw new BookingTimeConflictException(serviceId);
         }
-
-        Booking booking = Booking.create(
-                userId,
-                serviceId,
-                startTime,
-                endTime
-        );
 
         return bookingRepository.save(booking);
     }
