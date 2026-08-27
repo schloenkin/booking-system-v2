@@ -1,10 +1,7 @@
 package com.viktor.booking.domain.model;
 
 import com.viktor.booking.domain.enums.BookingStatus;
-import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
-import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
-import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
-import com.viktor.booking.domain.exception.BookingCannotBeRescheduledException;
+import com.viktor.booking.domain.exception.*;
 
 import java.time.LocalDateTime;
 
@@ -24,9 +21,7 @@ public class Booking {
             LocalDateTime endTime
     ) {
         if (startTime != null && !startTime.isAfter(LocalDateTime.now())) {
-            throw new IllegalArgumentException(
-                    "Start time must be in the future"
-            );
+            throw new BookingInPastException();
         }
         return new Booking(
                 null,
@@ -84,7 +79,7 @@ public class Booking {
         }
 
         if (!endTime.isAfter(startTime)) {
-            throw new IllegalArgumentException("End time must be after start time");
+            throw new InvalidBookingTimeException("End time must be after start time");
         }
         if (status==null) {
             throw new IllegalArgumentException("Booking status must not be null");
