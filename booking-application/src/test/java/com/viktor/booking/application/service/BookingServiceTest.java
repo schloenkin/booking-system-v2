@@ -1115,6 +1115,33 @@ class BookingServiceTest {
         verifyNoMoreInteractions(bookingRepository);
     }
 
+    @Test
+    void shouldRejectInvalidTimeBeforeCheckingPastStartTime() {
+        LocalDateTime startTime =
+                LocalDateTime.now().minusDays(1);
+
+        LocalDateTime endTime = startTime;
+
+        assertThatThrownBy(() ->
+                bookingService.createBooking(
+                        1L,
+                        2L,
+                        startTime,
+                        endTime
+                )
+        )
+                .isInstanceOf(InvalidBookingTimeException.class)
+                .hasMessage(
+                        "End time must be after start time"
+                );
+
+        verifyNoInteractions(
+                userRepository,
+                serviceRepository,
+                bookingRepository
+        );
+    }
+
     private Booking bookingWithStatus(
             Long bookingId,
             BookingStatus status
