@@ -1,4 +1,4 @@
-package com.viktor.booking.application.exception;
+package com.viktor.booking.domain.exception;
 
 public class InvalidBookingTimeException extends RuntimeException {
 

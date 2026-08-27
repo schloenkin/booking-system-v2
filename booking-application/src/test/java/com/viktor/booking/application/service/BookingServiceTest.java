@@ -1,6 +1,6 @@
 package com.viktor.booking.application.service;
 
-import com.viktor.booking.application.exception.InvalidBookingTimeException;
+import com.viktor.booking.domain.exception.InvalidBookingTimeException;
 import com.viktor.booking.application.repository.BookingRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +17,7 @@ import com.viktor.booking.domain.model.User;
 import com.viktor.booking.application.exception.InactiveBookableServiceException;
 import com.viktor.booking.domain.model.BookableService;
 import com.viktor.booking.application.exception.InvalidBookingDurationException;
-import com.viktor.booking.application.exception.BookingInPastException;
+import com.viktor.booking.domain.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingTimeConflictException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

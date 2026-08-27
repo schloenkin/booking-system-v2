@@ -1,6 +1,6 @@
 package com.viktor.booking.api.exception;
 
-import com.viktor.booking.application.exception.BookingInPastException;
+import com.viktor.booking.domain.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingOperationForbiddenException;
 import com.viktor.booking.application.exception.InvalidCredentialsException;
 import com.viktor.booking.application.exception.UserAlreadyExistsException;

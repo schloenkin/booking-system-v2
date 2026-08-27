@@ -1,6 +1,6 @@
 package com.viktor.booking.application.service;
 
-import com.viktor.booking.application.exception.InvalidBookingTimeException;
+import com.viktor.booking.domain.exception.InvalidBookingTimeException;
 import com.viktor.booking.application.repository.BookingRepository;
 import com.viktor.booking.application.exception.BookableServiceNotFoundException;
 import com.viktor.booking.application.repository.BookableServiceRepository;
@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import com.viktor.booking.application.exception.InactiveBookableServiceException;
 import com.viktor.booking.domain.model.BookableService;
 import com.viktor.booking.application.exception.InvalidBookingDurationException;
-import com.viktor.booking.application.exception.BookingInPastException;
+import com.viktor.booking.domain.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingTimeConflictException;
 import org.springframework.transaction.annotation.Transactional;
 import com.viktor.booking.application.exception.InvalidBookingSearchException;
