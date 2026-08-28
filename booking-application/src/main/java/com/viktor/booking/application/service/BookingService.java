@@ -1,5 +1,6 @@
 package com.viktor.booking.application.service;
 
+import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.exception.InvalidBookingTimeException;
 import com.viktor.booking.application.repository.BookingRepository;
 import com.viktor.booking.application.exception.BookableServiceNotFoundException;
@@ -182,54 +183,30 @@ public class BookingService {
 
     @Transactional
     public Optional<Booking> cancelBookingById(Long id) {
-        Optional<Booking> booking =
-                bookingRepository.findById(id);
-
-        if (booking.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Booking existingBooking = booking.get();
-
-        existingBooking.cancel();
-
-        return bookingRepository.update(
-                existingBooking
-        );
+        return bookingRepository.findById(id)
+                .flatMap(existingBooking -> {
+                    existingBooking.cancel();
+                    return bookingRepository.update(existingBooking);
+                });
     }
 
     @Transactional
     public Optional<Booking> confirmBookingById(Long id) {
-        Optional<Booking> booking =
-                bookingRepository.findById(id);
-
-        if (booking.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Booking existingBooking = booking.get();
-
-        existingBooking.confirm();
-
-        return bookingRepository.update(
-                existingBooking
-        );
-
+        return bookingRepository.findById(id)
+                .flatMap(existingBooking -> {
+                    existingBooking.confirm();
+                    return bookingRepository.update(existingBooking);
+                });
     }
+
     @Transactional
     public Optional<Booking> rescheduleBookingById(
             Long bookingId,
             LocalDateTime newStartTime,
             LocalDateTime newEndTime
     ) {
-        Optional<Booking> booking =
-                bookingRepository.findById(bookingId);
-
-        if (booking.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Booking existingBooking = booking.get();
+        return bookingRepository.findById(bookingId)
+                .flatMap(existingBooking -> {
 
         if (bookingRepository.existsConflictingBookingExcludingId(
                 bookingId,
@@ -248,8 +225,7 @@ public class BookingService {
         );
 
         return bookingRepository.update(
-                existingBooking
-        );
+                existingBooking);
+                });
     }
-
 }
