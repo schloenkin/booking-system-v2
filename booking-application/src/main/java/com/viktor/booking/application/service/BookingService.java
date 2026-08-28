@@ -165,20 +165,15 @@ public class BookingService {
 
     @Transactional
     public boolean deleteBookingById(Long id) {
-        Optional<Booking> booking =
-                bookingRepository.findById(id);
-
-        if (booking.isEmpty()) {
-            return false;
-        }
-
-        Booking existingBooking = booking.get();
-
-        existingBooking.ensureCanBeDeleted();
-
-        bookingRepository.deleteById(id);
-
-        return true;
+        return bookingRepository.findById(id)
+                        .map(booking -> {
+                                    booking.ensureCanBeDeleted();
+                                    bookingRepository.deleteById(id);
+                            return true;
+                        })
+                .orElse(
+                        false
+                );
     }
 
     @Transactional
