@@ -715,3 +715,10 @@ It demonstrates practical experience with:
 - automated testing with Testcontainers;
 - multi-stage Docker builds and Docker Compose;
 - continuous integration with GitHub Actions.
+
+## Development workflow
+
+1. Create a separate branch for each task.
+2. Make changes and run relevant tests.
+3. Commit and push the branch to GitHub.
+4. Open a Pull Request for review.
