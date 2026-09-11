@@ -22,9 +22,7 @@ services:
       start_period: 10s
 
   booking-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/schloenkin/booking-system-v2:6ddf99124393aa6b89f6e397e5b2c5bc903163ec
 
     container_name: booking-api
 
