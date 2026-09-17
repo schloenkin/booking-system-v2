@@ -4,7 +4,7 @@
 
 A production-style backend portfolio project built with Java and Spring Boot.
 
-Booking System v2 provides secure management of users, bookable services, and bookings. The project demonstrates modular architecture, domain-driven business rules, JWT authentication, role-based and object-level authorization, PostgreSQL persistence, database migrations, concurrency control, automated testing, OpenAPI documentation, containerization, and continuous integration.
+Booking System v2 provides secure management of users, bookable services, and bookings. The project demonstrates modular architecture, domain-driven business rules, JWT authentication, role-based and object-level authorization, PostgreSQL persistence, database migrations, concurrency control, automated testing, OpenAPI documentation, containerization, CI/CD with GitHub Actions and GHCR, and Kubernetes-based application orchestration.
 
 ## Key Features
 
@@ -24,7 +24,15 @@ Booking System v2 provides secure management of users, bookable services, and bo
 - PostgreSQL integration tests with Testcontainers
 - Multi-stage Docker image
 - Docker Compose runtime for the application and PostgreSQL
+- Docker image publishing to GitHub Container Registry (GHCR)
 - GitHub Actions CI for Maven verification and Docker image builds
+- Automated Docker Compose deployment through a separate deployment repository and self-hosted runner
+- Kubernetes deployment for the Booking API and PostgreSQL
+- Kubernetes Services for application and database networking
+- Externalized Kubernetes configuration with ConfigMap and Secret
+- Persistent PostgreSQL storage with PersistentVolumeClaim
+- Readiness and liveness probes for the Booking API
+- Kubernetes rolling updates verified in a local cluster
 
 ## Technology Stack
 
@@ -39,7 +47,11 @@ Booking System v2 provides secure management of users, bookable services, and bo
 - Springdoc OpenAPI 2.8.17
 - Docker
 - Docker Compose
+- Kubernetes
+- kubectl
 - GitHub Actions
+- GitHub Container Registry (GHCR)
+- Swagger UI
 - Maven
 - JUnit 5
 - Mockito
@@ -68,6 +80,8 @@ booking-system-v2
 |-- README.md
 `-- pom.xml
 ```
+
+Deployment configuration is kept in a separate `booking-system-deploy` repository. It contains the Docker Compose deployment workflow and the Kubernetes manifests used for local orchestration. Keeping deployment configuration separate from application source code makes the build and deployment responsibilities explicit.
 
 ### `booking-domain`
 
@@ -608,38 +622,76 @@ booking-system-v2
     `-- install
 ```
 
-## Continuous Integration
+## CI/CD Pipeline
 
-The GitHub Actions workflow is located at:
+The project uses GitHub Actions for validation, image publishing, and deployment automation.
+
+### Continuous Integration
+
+The main workflow is located at:
 
 ```text
 .github/workflows/ci.yml
 ```
 
-It runs for:
+It runs for pushes and pull requests and verifies changes with Maven and Docker.
 
-- pushes to `main`;
-- pushes to branches matching `feature/**`;
-- pull requests targeting `main`.
+The CI flow includes:
 
-The CI job:
-
-1. checks out the repository;
-2. configures Temurin Java 17;
-3. restores the Maven dependency cache;
-4. runs:
+1. checking out the repository;
+2. configuring Temurin Java 17;
+3. restoring the Maven dependency cache;
+4. running:
 
    ```bash
    mvn --batch-mode --no-transfer-progress clean verify
    ```
 
-5. builds the Docker image:
+5. building the Docker image.
 
-   ```bash
-   docker build --tag booking-system:ci .
-   ```
+A change is considered verified only when the Maven build and Docker image build succeed.
 
-A change is considered verified only when both the Maven build and Docker image build succeed.
+### Image Publishing and Deployment Trigger
+
+After changes reach `main`, the pipeline publishes a versioned Docker image to GitHub Container Registry (GHCR). The image tag is based on the Git commit SHA.
+
+The application repository then triggers the separate `booking-system-deploy` repository. The deployment repository runs on a self-hosted Windows runner and performs the Docker Compose deployment:
+
+```text
+booking-system-v2
+        |
+        v
+GitHub Actions
+        |
+        v
+Maven verification
+        |
+        v
+Docker image
+        |
+        v
+GHCR
+        |
+        v
+repository dispatch
+        |
+        v
+booking-system-deploy
+        |
+        v
+self-hosted runner
+        |
+        v
+docker compose pull
+        |
+        v
+docker compose up -d
+        |
+        v
+health check
+```
+
+This automated deployment path currently uses Docker Compose. Kubernetes deployment is maintained and verified separately in a local cluster.
 
 ## Docker Image
 
@@ -657,6 +709,76 @@ The runtime stage:
 - copies only the packaged application;
 - runs the process as a non-root `booking` user;
 - exposes port `8080`.
+
+For deployment, versioned images are published to GitHub Container Registry:
+
+```text
+ghcr.io/schloenkin/booking-system-v2:<commit-sha>
+```
+
+## Kubernetes Deployment
+
+In addition to Docker Compose, the application has been deployed and verified in a local Kubernetes cluster provided by Docker Desktop.
+
+Kubernetes manifests are maintained in the separate `booking-system-deploy` repository.
+
+The local Kubernetes setup includes:
+
+- a Deployment for the Booking API;
+- a Deployment for PostgreSQL;
+- Services for the Booking API and PostgreSQL;
+- internal database connectivity through Kubernetes DNS at `postgres:5432`;
+- a ConfigMap for non-sensitive application configuration;
+- a Kubernetes Secret for sensitive values;
+- a PersistentVolumeClaim for PostgreSQL data;
+- readiness and liveness probes for the Booking API;
+- rolling application updates managed by Kubernetes Deployment.
+
+The deployment structure is:
+
+```text
+Kubernetes Cluster
+|
+|-- Booking API Deployment
+|   `-- Booking API Pod
+|       `-- Spring Boot :8080
+|
+|-- Booking API Service
+|
+|-- PostgreSQL Service
+|   `-- postgres:5432
+|
+`-- PostgreSQL Deployment
+    `-- PostgreSQL Pod
+        `-- PersistentVolumeClaim
+```
+
+The Kubernetes files are organized approximately as follows:
+
+```text
+booking-system-deploy
+`-- k8s
+    |-- deployment.yaml
+    |-- booking-service.yaml
+    |-- booking-configmap.yaml
+    |-- postgres-deployment.yaml
+    |-- postgres-service.yaml
+    `-- postgres-pvc.yaml
+```
+
+The local Secret manifest is intentionally excluded from version control.
+
+Typical verification commands include:
+
+```bash
+kubectl get deployments
+kubectl get pods
+kubectl get services
+kubectl get pvc
+kubectl rollout status deployment/booking-api
+```
+
+The Kubernetes setup is currently a local orchestration environment. The automated deployment workflow described above still deploys through Docker Compose rather than Kubernetes.
 
 ## Demonstrated End-to-End Flow
 
@@ -714,7 +836,12 @@ It demonstrates practical experience with:
 - OpenAPI and Swagger documentation;
 - automated testing with Testcontainers;
 - multi-stage Docker builds and Docker Compose;
-- continuous integration with GitHub Actions.
+- Docker image publishing with GitHub Container Registry;
+- CI/CD automation with GitHub Actions and a self-hosted runner;
+- Kubernetes Deployments and Services;
+- Kubernetes configuration and secret management;
+- persistent storage with PersistentVolumeClaim;
+- readiness/liveness probes and rolling updates.
 
 ## Development workflow
 
@@ -722,4 +849,4 @@ It demonstrates practical experience with:
 2. Make changes and run relevant tests.
 3. Commit and push the branch to GitHub.
 4. Open a Pull Request for review.
-5. End.
+5. Merge after the required checks succeed.
