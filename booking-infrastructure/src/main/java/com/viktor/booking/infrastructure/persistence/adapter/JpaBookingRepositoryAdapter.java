@@ -205,8 +205,14 @@ public class JpaBookingRepositoryAdapter implements BookingRepository {
         return bookingJpaRepository
                 .findById(booking.getId())
                 .map(entity -> {
+
                     entity.setStatus(
                             booking.getStatus()
+                    );
+
+                    entity.reschedule(
+                            booking.getStartTime(),
+                            booking.getEndTime()
                     );
 
                     BookingEntity savedEntity =

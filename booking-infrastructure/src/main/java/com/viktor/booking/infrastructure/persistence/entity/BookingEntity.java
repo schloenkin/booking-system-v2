@@ -91,4 +91,12 @@ public class BookingEntity {
     public void setStatus(BookingStatus status) {
         this.status = status;
     }
+
+    public void reschedule(
+            LocalDateTime newStartTime,
+            LocalDateTime newEndTime
+    ) {
+        this.startTime = newStartTime;
+        this.endTime = newEndTime;
+    }
 }
