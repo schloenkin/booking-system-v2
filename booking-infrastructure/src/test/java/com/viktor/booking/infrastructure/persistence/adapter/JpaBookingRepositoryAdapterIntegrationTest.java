@@ -180,6 +180,74 @@ class JpaBookingRepositoryAdapterIntegrationTest {
     }
 
     @Test
+    void shouldPersistRescheduledBookingTimeThroughAdapter() {
+        UserEntity user = entityManager.persistAndFlush(
+                new UserEntity(
+                        "adapter-reschedule-test@example.com",
+                        "hashed-password",
+                        UserRole.USER
+                )
+        );
+
+        BookableServiceEntity service = entityManager.persistAndFlush(
+                new BookableServiceEntity(
+                        "Reschedule consultation",
+                        "Service for reschedule persistence test",
+                        60,
+                        true
+                )
+        );
+
+        LocalDateTime originalStartTime =
+                LocalDateTime.of(2035, 8, 7, 10, 0);
+
+        LocalDateTime originalEndTime =
+                originalStartTime.plusMinutes(60);
+
+        Booking booking = Booking.create(
+                user.getId(),
+                service.getId(),
+                originalStartTime,
+                originalEndTime
+        );
+
+        Booking savedBooking =
+                bookingRepositoryAdapter.save(booking);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        LocalDateTime newStartTime =
+                LocalDateTime.of(2035, 8, 8, 14, 0);
+
+        LocalDateTime newEndTime =
+                newStartTime.plusMinutes(60);
+
+        savedBooking.reschedule(
+                newStartTime,
+                newEndTime
+        );
+
+        bookingRepositoryAdapter
+                .update(savedBooking)
+                .orElseThrow();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Booking bookingFromDatabase =
+                bookingRepositoryAdapter
+                        .findById(savedBooking.getId())
+                        .orElseThrow();
+
+        assertThat(bookingFromDatabase.getStartTime())
+                .isEqualTo(newStartTime);
+
+        assertThat(bookingFromDatabase.getEndTime())
+                .isEqualTo(newEndTime);
+    }
+
+    @Test
     void shouldThrowExceptionWhenUserDoesNotExist() {
         BookableServiceEntity service = entityManager.persistAndFlush(
                 new BookableServiceEntity(
