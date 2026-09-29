@@ -1,6 +1,7 @@
 package com.viktor.booking.infrastructure.persistence.adapter;
 
 import com.viktor.booking.application.repository.UserRepository;
+import com.viktor.booking.domain.model.Booking;
 import com.viktor.booking.domain.model.User;
 import com.viktor.booking.infrastructure.persistence.entity.UserEntity;
 import com.viktor.booking.infrastructure.persistence.mapper.UserMapper;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,6 +27,16 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     ) {
         this.userJpaRepository = userJpaRepository;
         this.userMapper = userMapper;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<User> findAll() {
+        return userJpaRepository
+                .findAll()
+                .stream()
+                .map(userMapper::toDomain)
+                .toList();
     }
 
     @Override
