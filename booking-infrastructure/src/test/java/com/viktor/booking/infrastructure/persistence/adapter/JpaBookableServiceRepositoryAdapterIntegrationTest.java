@@ -88,42 +88,53 @@ class JpaBookableServiceRepositoryAdapterIntegrationTest {
 
     @Test
     void shouldFindAllServicesThroughAdapter() {
-        serviceRepositoryAdapter.save(
-                new BookableService(
-                        null,
-                        "Java consultation",
-                        "Individual Java consultation",
-                        60,
-                        true
-                )
-        );
 
-        serviceRepositoryAdapter.save(
-                new BookableService(
-                        null,
-                        "Docker consultation",
-                        "Individual Docker consultation",
-                        45,
-                        false
-                )
-        );
+        BookableService firstService =
+                serviceRepositoryAdapter.save(
+                        new BookableService(
+                                null,
+                                "Java consultation",
+                                "Individual Java consultation",
+                                60,
+                                true
+                        )
+                );
+
+        BookableService secondService =
+                serviceRepositoryAdapter.save(
+                        new BookableService(
+                                null,
+                                "Docker consultation",
+                                "Individual Docker consultation",
+                                45,
+                                false
+                        )
+                );
 
         entityManager.flush();
         entityManager.clear();
 
-        var services =
-                serviceRepositoryAdapter.findAll();
+        var services = serviceRepositoryAdapter.findAll();
 
         assertThat(services)
-                .hasSize(2);
+                .extracting(BookableService::getId)
+                .contains(
+                        firstService.getId(),
+                        secondService.getId()
+                );
 
         assertThat(services)
+                .filteredOn(service ->
+                        service.getId().equals(firstService.getId())
+                                || service.getId().equals(secondService.getId())
+                )
                 .extracting(BookableService::getName)
                 .containsExactlyInAnyOrder(
                         "Java consultation",
                         "Docker consultation"
                 );
     }
+
 
     @Test
     void shouldUpdateActiveStateThroughAdapter() {

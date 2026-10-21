@@ -20,6 +20,11 @@ import com.viktor.booking.application.exception.InvalidBookingSearchException;
 import com.viktor.booking.application.query.BookingSearchCriteria;
 import com.viktor.booking.application.query.PageRequestData;
 import com.viktor.booking.application.query.PageResult;
+import com.viktor.booking.domain.policy.BookingSchedulePolicy;
+import com.viktor.booking.domain.exception.InvalidBookingScheduleException;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 
 import java.time.LocalDateTime;
@@ -42,6 +47,8 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final BookableServiceRepository serviceRepository;
+    private final BookingSchedulePolicy bookingSchedulePolicy =
+            new BookingSchedulePolicy(); // at the moment it goes without DI. Later we can correct it.
 
     public BookingService(
             BookingRepository bookingRepository,
@@ -140,6 +147,19 @@ public class BookingService {
         if (!service.isActive()) {
             throw new InactiveBookableServiceException(serviceId);
         }
+
+        LocalDate today = LocalDate.now(
+                ZoneId.of("Europe/Berlin")
+        );
+
+        if (!bookingSchedulePolicy.isValid(
+                startTime,
+                endTime,
+                today
+        )) {
+            throw new InvalidBookingScheduleException();
+        }
+
         Duration bookingDuration =
                 Duration.between(startTime, endTime);
 
@@ -166,11 +186,11 @@ public class BookingService {
     @Transactional
     public boolean deleteBookingById(Long id) {
         return bookingRepository.findById(id)
-                        .map(booking -> {
-                                    booking.ensureCanBeDeleted();
-                                    bookingRepository.deleteById(id);
-                            return true;
-                        })
+                .map(booking -> {
+                    booking.ensureCanBeDeleted();
+                    bookingRepository.deleteById(id);
+                    return true;
+                })
                 .orElse(
                         false
                 );
@@ -202,25 +222,36 @@ public class BookingService {
     ) {
         return bookingRepository.findById(bookingId)
                 .flatMap(existingBooking -> {
+                    LocalDate today = LocalDate.now(
+                            ZoneId.of("Europe/Berlin")
+                    );
 
-        if (bookingRepository.existsConflictingBookingExcludingId(
-                bookingId,
-                existingBooking.getServiceId(),
-                newStartTime,
-                newEndTime
-        )) {
-            throw new BookingTimeConflictException(
-                    existingBooking.getServiceId()
-            );
-        }
+                    if (!bookingSchedulePolicy.isValid(
+                            newStartTime,
+                            newEndTime,
+                            today
+                    )) {
+                        throw new InvalidBookingScheduleException();
+                    }
 
-        existingBooking.reschedule(
-                newStartTime,
-                newEndTime
-        );
+                    if (bookingRepository.existsConflictingBookingExcludingId(
+                            bookingId,
+                            existingBooking.getServiceId(),
+                            newStartTime,
+                            newEndTime
+                    )) {
+                        throw new BookingTimeConflictException(
+                                existingBooking.getServiceId()
+                        );
+                    }
 
-        return bookingRepository.update(
-                existingBooking);
+                    existingBooking.reschedule(
+                            newStartTime,
+                            newEndTime
+                    );
+
+                    return bookingRepository.update(
+                            existingBooking);
                 });
     }
 }

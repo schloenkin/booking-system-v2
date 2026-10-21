@@ -19,7 +19,10 @@ import com.viktor.booking.domain.model.BookableService;
 import com.viktor.booking.application.exception.InvalidBookingDurationException;
 import com.viktor.booking.domain.exception.BookingInPastException;
 import com.viktor.booking.application.exception.BookingTimeConflictException;
-
+import com.viktor.booking.domain.policy.BookingSchedulePolicy;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.never;
@@ -1006,7 +1009,7 @@ class BookingServiceTest {
         Long userId = 1L;
         Long serviceId = 2L;
 
-        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldStartTime = futureStartTime();
         LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
 
         LocalDateTime newStartTime = oldStartTime.plusMinutes(30);
@@ -1064,7 +1067,7 @@ class BookingServiceTest {
         Long userId = 1L;
         Long serviceId = 2L;
 
-        LocalDateTime oldStartTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime oldStartTime = futureStartTime();
         LocalDateTime oldEndTime = oldStartTime.plusMinutes(60);
 
         LocalDateTime newStartTime = oldStartTime.plusMinutes(30);
@@ -1166,9 +1169,20 @@ class BookingServiceTest {
     }
 
     private LocalDateTime futureStartTime() {
-        return LocalDateTime.now()
-                .plusDays(1)
-                .withSecond(0)
-                .withNano(0);
+        LocalDate today = LocalDate.now(
+                ZoneId.of("Europe/Berlin")
+        );
+
+        BookingSchedulePolicy schedulePolicy =
+                new BookingSchedulePolicy();
+
+        LocalDate nextWorkingDay =
+                schedulePolicy.nextWorkingDay(today);
+
+        return LocalDateTime.of(
+                nextWorkingDay,
+                LocalTime.of(10, 0)
+        );
     }
+
 }

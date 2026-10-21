@@ -418,7 +418,7 @@ class JwtSecurityIntegrationTest {
                 userTwoBookingId
         );
 
-        verifyRemovedUserCreationEndpointReturns404(
+        verifyRemovedUserCreationEndpointReturns405(
                 adminToken
         );
     }
@@ -1854,7 +1854,7 @@ class JwtSecurityIntegrationTest {
                 );
     }
 
-    private void verifyRemovedUserCreationEndpointReturns404(
+    private void verifyRemovedUserCreationEndpointReturns405(
             String adminToken
     ) throws Exception {
 
@@ -1880,9 +1880,10 @@ class JwtSecurityIntegrationTest {
                                 .content(requestBody)
                 )
                 .andExpect(
-                        status().isNotFound()
+                        status().isMethodNotAllowed()
                 );
     }
+
 
     private String createServiceRequestBody(
             String name

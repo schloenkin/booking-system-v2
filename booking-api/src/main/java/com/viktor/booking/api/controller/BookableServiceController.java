@@ -25,6 +25,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import com.viktor.booking.application.service.BookingAvailabilityService;
+import com.viktor.booking.api.dto.ServiceAvailabilityResponse;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -36,12 +41,16 @@ import java.util.List;
 public class BookableServiceController {
 
     private final BookableServiceService serviceService;
+    private final BookingAvailabilityService availabilityService;
 
     public BookableServiceController(
-            BookableServiceService serviceService
+            BookableServiceService serviceService,
+            BookingAvailabilityService availabilityService
     ) {
         this.serviceService = serviceService;
+        this.availabilityService = availabilityService;
     }
+
 
     @Operation(
             summary = "Create a bookable service",
@@ -106,6 +115,33 @@ public class BookableServiceController {
         return ResponseEntity
                 .status(201)
                 .body(toResponse(createdService));
+    }
+
+    @Operation(summary = "Get service availability")
+    @GetMapping("/api/services/{id}/availability")
+    public ServiceAvailabilityResponse getAvailability(
+            @PathVariable("id") Long id,
+
+            @RequestParam("date")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date
+    ) {
+        var slots = availabilityService
+                .getAvailability(id, date)
+                .stream()
+                .map(slot ->
+                        new ServiceAvailabilityResponse.SlotResponse(
+                                slot.time(),
+                                slot.available()
+                        )
+                )
+                .toList();
+
+        return new ServiceAvailabilityResponse(
+                id,
+                date,
+                slots
+        );
     }
 
     @Operation(

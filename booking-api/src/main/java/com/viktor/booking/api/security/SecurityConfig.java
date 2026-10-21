@@ -98,7 +98,8 @@ public class SecurityConfig {
                                 .requestMatchers(
                                         HttpMethod.GET,
                                         "/api/services",
-                                        "/api/services/*"
+                                        "/api/services/*",
+                                        "/api/services/*/availability"
                                 ).permitAll()
 
                                 .requestMatchers(

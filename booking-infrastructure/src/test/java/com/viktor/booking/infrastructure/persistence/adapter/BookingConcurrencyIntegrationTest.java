@@ -35,6 +35,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.viktor.booking.domain.policy.BookingSchedulePolicy;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -99,10 +104,17 @@ class BookingConcurrencyIntegrationTest {
                         )
                 );
 
-        LocalDateTime startTime = LocalDateTime.now()
-                .plusDays(2)
-                .withSecond(0)
-                .withNano(0);
+        LocalDate today = LocalDate.now(
+                ZoneId.of("Europe/Berlin")
+        );
+
+        LocalDate bookingDate = new BookingSchedulePolicy()
+                .nextWorkingDay(today);
+
+        LocalDateTime startTime = LocalDateTime.of(
+                bookingDate,
+                LocalTime.of(10, 0)
+        );
 
         LocalDateTime endTime =
                 startTime.plusMinutes(60);

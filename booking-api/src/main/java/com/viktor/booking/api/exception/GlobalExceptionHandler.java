@@ -19,6 +19,7 @@ import com.viktor.booking.domain.exception.BookingCannotBeCancelledException;
 import com.viktor.booking.domain.exception.BookingCannotBeConfirmedException;
 import com.viktor.booking.domain.exception.BookingCannotBeDeletedException;
 import com.viktor.booking.domain.exception.BookingCannotBeRescheduledException;
+import com.viktor.booking.domain.exception.InvalidBookingScheduleException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -344,6 +345,19 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 HttpStatus.CONFLICT,
                 ApiErrorCode.BOOKING_CANNOT_BE_RESCHEDULED,
+                exception.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidBookingScheduleException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBookingScheduleException(
+            InvalidBookingScheduleException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ApiErrorCode.INVALID_BOOKING_SCHEDULE,
                 exception.getMessage(),
                 request
         );
